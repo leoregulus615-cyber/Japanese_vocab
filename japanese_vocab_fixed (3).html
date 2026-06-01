@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>日本語 단어장</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;700&family=Noto+Sans+KR:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --paper: #f5f0e8;
+    --paper2: #ede7d9;
+    --red: #c0392b;
+    --red-soft: #e8c5c1;
+    --green: #2c7a4b;
+    --green-soft: #c1dfd0;
+    --gold: #b8860b;
+    --gold-soft: #f0e0a0;
+    --blue: #2c4f7a;
+    --blue-soft: #c1cfe8;
+    --border: #c8bfaa;
+    --shadow: rgba(0,0,0,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 31px, var(--border) 31px, var(--border) 32px);
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px var(--shadow);
+  }
+  header h1 {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  header h1 span {
+    font-size: 0.7rem;
+    font-family: 'Noto Sans KR', sans-serif;
+    opacity: 0.6;
+    display: block;
+    letter-spacing: 0.1em;
+  }
+
+  .tab-bar {
+    display: flex;
+    gap: 4px;
+  }
+  .tab-btn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.3);
+    color: rgba(255,255,255,0.7);
+    padding: 6px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 0.82rem;
+    transition: all 0.2s;
+  }
+  .tab-btn.active, .tab-btn:hover {
+    background: var(--paper);
+    color: var(--ink);
+    border-color: var(--paper);
+  }
+
+  /* ── Pages ── */
+  .page { display: none; padding: 24px 20px; max-width: 800px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* ── Quiz Mode ── */
+  .quiz-stats {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .stat-chip {
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    background: white;
+  }
+  .stat-chip.carry { background: var(--gold-soft); border-color: var(--gold); color: var(--gold); }
+  .stat-chip.done { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+  .stat-chip.remain { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+
+  .card-wrapper {
+    perspective: 1000px;
+    margin-bottom: 24px;
+  }
+  .card {
+    background: white;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 40px 28px 32px;
+    text-align: center;
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 3px 3px 0 var(--border), 6px 6px 0 var(--paper2);
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: var(--ink);
+  }
+  .card .kanji {
+    font-family: 'Noto Serif JP', serif;
+    font-size: clamp(2.5rem, 8vw, 4.5rem);
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .card .furigana {
+    font-family: 'Noto Serif JP', serif;
+    font-size: clamp(1rem, 3vw, 1.4rem);
+    color: var(--red);
+    margin-bottom: 10px;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  .card .furigana.show { opacity: 1; }
+  .card .meaning {
+    font-size: clamp(0.9rem, 2.5vw, 1.15rem);
+    color: #444;
+    opacity: 0;
+    transition: opacity 0.4s ease 0.1s;
+    padding: 8px 16px;
+    border-top: 1px dashed var(--border);
+    width: 100%;
+  }
+  .card .meaning.show { opacity: 1; }
+  .card .type-badge {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    font-size: 0.65rem;
+    background: var(--paper2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 8px;
+    color: #777;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .btn {
+    padding: 12px 24px;
+    border-radius: 6px;
+    border: 1.5px solid;
+    cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-reveal { background: var(--gold-soft); border-color: var(--gold); color: var(--gold); }
+  .btn-reveal:hover { background: var(--gold); color: white; }
+  .btn-carry { background: var(--red-soft); border-color: var(--red); color: var(--red); }
+  .btn-carry:hover { background: var(--red); color: white; }
+  .btn-done { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+  .btn-done:hover { background: var(--green); color: white; }
+  .btn-primary { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+  .btn-primary:hover { background: #333; }
+  .btn-danger { background: #fdecea; border-color: var(--red); color: var(--red); }
+  .btn-danger:hover { background: var(--red); color: white; }
+  .btn-carry-review {
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: 1.5px solid var(--red);
+    background: var(--red-soft);
+    color: var(--red);
+    cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+    transition: all 0.2s;
+  }
+  .btn-carry-review:hover { background: var(--red); color: white; }
+  .btn-carry-review.active-mode {
+    background: var(--red);
+    color: white;
+    box-shadow: 0 0 0 3px var(--red-soft);
+  }
+  #btn-carry-threshold.active-mode {
+    background: var(--gold) !important;
+    color: white !important;
+    box-shadow: 0 0 0 3px var(--gold-soft);
+  }
+  .mode-banner {
+    background: var(--red-soft);
+    border: 1.5px solid var(--red);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 0.82rem;
+    color: var(--red);
+    font-weight: 600;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .mode-banner button {
+    background: none;
+    border: 1px solid var(--red);
+    border-radius: 4px;
+    padding: 2px 10px;
+    color: var(--red);
+    font-size: 0.75rem;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .mode-banner button:hover { background: var(--red); color: white; }
+
+  .quiz-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: #888;
+  }
+  .quiz-empty .big-emoji { font-size: 3rem; margin-bottom: 12px; }
+  .quiz-empty p { font-size: 1rem; line-height: 1.6; }
+  .quiz-empty .reset-btn-wrap { margin-top: 20px; }
+
+  /* progress bar */
+  .progress-bar {
+    height: 6px;
+    background: var(--paper2);
+    border-radius: 3px;
+    margin-bottom: 18px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--green);
+    border-radius: 3px;
+    transition: width 0.4s ease;
+  }
+
+  /* ── Edit Mode ── */
+  .edit-toolbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .edit-toolbar span {
+    font-size: 0.8rem;
+    color: #888;
+    margin-left: auto;
+  }
+
+  .vocab-table-wrap {
+    overflow-x: auto;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: white;
+    box-shadow: 2px 2px 0 var(--border);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 480px;
+  }
+  thead tr {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  thead th {
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+  tbody tr {
+    border-bottom: 1px solid var(--paper2);
+    transition: background 0.15s;
+  }
+  tbody tr:hover { background: #faf8f4; }
+  tbody tr.editing { background: #fffdf5; }
+  td {
+    padding: 8px 10px;
+    font-size: 0.9rem;
+    vertical-align: middle;
+  }
+  td.kanji-cell { font-family: 'Noto Serif JP', serif; font-size: 1.1rem; font-weight: 700; }
+  td.furigana-cell { color: var(--red); font-family: 'Noto Serif JP', serif; }
+  td.type-cell { color: #777; font-size: 0.78rem; }
+  td.actions-cell { white-space: nowrap; }
+
+  td input, td select {
+    border: 1px solid var(--gold);
+    border-radius: 4px;
+    padding: 4px 7px;
+    font-family: inherit;
+    font-size: 0.88rem;
+    width: 100%;
+    background: white;
+    outline: none;
+  }
+  td input:focus, td select:focus {
+    border-color: var(--ink);
+    box-shadow: 0 0 0 2px var(--gold-soft);
+  }
+
+  .icon-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.15s;
+    margin-right: 3px;
+  }
+  .icon-btn.edit-btn:hover { background: var(--gold-soft); border-color: var(--gold); }
+  .icon-btn.save-btn { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+  .icon-btn.del-btn:hover { background: var(--red-soft); border-color: var(--red); color: var(--red); }
+  .icon-btn.cancel-btn:hover { background: var(--paper2); }
+
+  /* carry badge in edit */
+  .carry-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--red);
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+
+  tbody tr.row-selected { background: #e8effa !important; }
+  tbody tr.row-selected:hover { background: #d8e4f5 !important; }
+
+  /* no words message */
+  .no-words {
+    text-align: center;
+    padding: 40px;
+    color: #aaa;
+    font-size: 0.9rem;
+  }
+
+  /* toast */
+  #toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink);
+    color: var(--paper);
+    padding: 10px 22px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 999;
+    white-space: nowrap;
+  }
+  #toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  @media (max-width: 480px) {
+    header { padding: 12px 14px; }
+    header h1 { font-size: 1.1rem; }
+    .tab-btn { padding: 5px 10px; font-size: 0.75rem; }
+    .page { padding: 16px 12px; }
+    .btn { padding: 10px 16px; font-size: 0.82rem; }
+  }
+
+  /* ── Keyboard Settings ── */
+  .kb-settings-btn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.3);
+    color: rgba(255,255,255,0.7);
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    line-height: 1;
+  }
+  .kb-settings-btn:hover {
+    background: var(--paper);
+    color: var(--ink);
+    border-color: var(--paper);
+  }
+
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--paper);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 24px;
+    width: min(420px, 92vw);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    position: relative;
+  }
+  .modal h2 {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 1.1rem;
+    margin-bottom: 6px;
+    color: var(--ink);
+  }
+  .modal .modal-desc {
+    font-size: 0.78rem;
+    color: #888;
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+  .modal-close {
+    position: absolute;
+    top: 14px; right: 16px;
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: #888;
+    line-height: 1;
+    padding: 4px;
+  }
+  .modal-close:hover { color: var(--ink); }
+
+  .kb-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--paper2);
+    gap: 12px;
+  }
+  .kb-row:last-of-type { border-bottom: none; }
+  .kb-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    flex: 1;
+  }
+  .kb-badge {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+  .kb-badge.reveal { background: var(--gold); }
+  .kb-badge.carry  { background: var(--red); }
+  .kb-badge.done   { background: var(--green); }
+
+  .kb-capture-btn {
+    padding: 7px 14px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    background: white;
+    font-family: monospace;
+    font-size: 0.85rem;
+    cursor: pointer;
+    min-width: 80px;
+    text-align: center;
+    transition: all 0.15s;
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .kb-capture-btn:hover { border-color: var(--gold); background: var(--gold-soft); }
+  .kb-capture-btn.listening {
+    border-color: var(--blue);
+    background: var(--blue-soft);
+    color: var(--blue);
+    animation: kb-pulse 0.9s infinite;
+  }
+  @keyframes kb-pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(44,79,122,0.3); }
+    50% { box-shadow: 0 0 0 5px rgba(44,79,122,0); }
+  }
+  .kb-clear-btn {
+    background: none;
+    border: none;
+    color: #bbb;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: color 0.15s;
+    line-height: 1;
+  }
+  .kb-clear-btn:hover { color: var(--red); }
+
+  .kb-hint-bar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 4px;
+    padding: 8px 12px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 0.78rem;
+    color: #777;
+    min-height: 36px;
+  }
+  .kb-hint-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .kb-key {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 24px;
+    padding: 0 7px;
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: monospace;
+    letter-spacing: 0.02em;
+    border-bottom: 2px solid rgba(0,0,0,0.4);
+  }
+  .kb-hint-sep { color: var(--border); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>日本語 단어장<span>JAPANESE VOCABULARY</span></h1>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button class="kb-settings-btn" onclick="openKbModal()" title="키보드 단축키 설정">⌨️</button>
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('quiz', this)">📖 퀴즈</button>
+      <button class="tab-btn" onclick="switchTab('edit', this)">✏️ 수정</button>
+    </div>
+  </div>
+</header>
+
+<!-- ── Keyboard Settings Modal ── -->
+<div class="modal-overlay" id="kb-modal" onclick="closeKbModalOnOverlay(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeKbModal()">✕</button>
+    <h2>⌨️ 키보드 단축키</h2>
+    <p class="modal-desc">퀴즈 모드에서 사용할 키를 설정하세요.<br>버튼을 클릭한 후 원하는 키를 누르면 등록됩니다.</p>
+
+    <div class="kb-row">
+      <div class="kb-label"><span class="kb-badge reveal"></span>👁 정답 보기</div>
+      <button class="kb-capture-btn" id="kbcap-reveal" onclick="startCapture('reveal')">—</button>
+      <button class="kb-clear-btn" onclick="clearKey('reveal')" title="해제">✕</button>
+    </div>
+    <div class="kb-row">
+      <div class="kb-label"><span class="kb-badge carry"></span>↩ 이월</div>
+      <button class="kb-capture-btn" id="kbcap-carry" onclick="startCapture('carry')">—</button>
+      <button class="kb-clear-btn" onclick="clearKey('carry')" title="해제">✕</button>
+    </div>
+    <div class="kb-row">
+      <div class="kb-label"><span class="kb-badge done"></span>✓ 완료</div>
+      <button class="kb-capture-btn" id="kbcap-done" onclick="startCapture('done')">—</button>
+      <button class="kb-clear-btn" onclick="clearKey('done')" title="해제">✕</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── QUIZ PAGE ── -->
+<div class="page active" id="page-quiz">
+  <div class="quiz-stats">
+    <div class="stat-chip remain" id="stat-remain">남은 단어: 0</div>
+    <div class="stat-chip carry" id="stat-carry">이월: 0</div>
+    <div class="stat-chip done" id="stat-done">완료: 0</div>
+    <button class="btn btn-carry-review" id="btn-repeat-all" onclick="repeatRemaining()" style="border-color:var(--blue);background:var(--blue-soft);color:var(--blue)">🔁 전체 다시 반복</button>
+    <span class="threshold-wrap" style="display:flex;align-items:center;gap:4px">
+      <button class="btn btn-carry-review" id="btn-carry-threshold" onclick="toggleCarryThresholdMode()" style="border-color:var(--gold);background:var(--gold-soft);color:var(--gold)">🔢 2회↑ 이월</button>
+      <select id="threshold-select" onchange="setCarryThreshold(this.value)" style="border:1.5px solid var(--gold);border-radius:4px;padding:4px 6px;font-size:0.78rem;background:var(--gold-soft);color:var(--gold);cursor:pointer;font-family:inherit">
+        <option value="1">1회↑</option>
+        <option value="2" selected>2회↑</option>
+        <option value="3">3회↑</option>
+        <option value="4">4회↑</option>
+        <option value="5">5회↑</option>
+      </select>
+    </span>
+  </div>
+
+  <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+
+  <div id="kb-hint-bar" class="kb-hint-bar" style="display:none"></div>
+  <div id="quiz-area"></div>
+</div>
+
+<!-- ── EDIT PAGE ── -->
+<div class="page" id="page-edit">
+  <div class="edit-toolbar">
+    <button class="btn btn-primary" onclick="addRow()">＋ 단어 추가</button>
+    <button class="btn btn-carry" onclick="resetCarry()" title="이월 표시 전체 초기화">🔄 이월 초기화</button>
+    <button class="btn" id="btn-checkbox-mode" onclick="toggleCheckboxMode()" style="border-color:var(--blue);background:var(--blue-soft);color:var(--blue)">☑ 일괄 선택</button>
+    <button class="btn" onclick="exportExcel()" style="border-color:var(--green);background:var(--green-soft);color:var(--green)" title="엑셀로 내보내기">📥 엑셀 내보내기</button>
+    <label class="btn" style="border-color:var(--gold);background:var(--gold-soft);color:var(--gold);cursor:pointer" title="엑셀 파일 가져오기">
+      📤 엑셀 가져오기
+      <input type="file" id="excel-import-input" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
+    </label>
+    <span id="word-count-label"></span>
+  </div>
+  <!-- 체크박스 모드 액션 바 -->
+  <div id="checkbox-action-bar" style="display:none;margin-bottom:12px;padding:10px 14px;background:var(--blue-soft);border:1.5px solid var(--blue);border-radius:8px;display:none;align-items:center;gap:10px;flex-wrap:wrap">
+    <span id="selected-count-label" style="font-size:0.82rem;color:var(--blue);font-weight:600">0개 선택됨</span>
+    <button class="btn" style="padding:6px 14px;font-size:0.8rem;border-color:var(--blue);background:var(--blue);color:white" onclick="selectAllCheckboxes()">전체 선택</button>
+    <button class="btn" style="padding:6px 14px;font-size:0.8rem;border-color:var(--border);background:white;color:#555" onclick="deselectAllCheckboxes()">선택 해제</button>
+    <button class="btn btn-danger" style="padding:6px 14px;font-size:0.8rem" onclick="deleteSelected()">🗑 선택 삭제</button>
+    <button class="btn btn-carry" style="padding:6px 14px;font-size:0.8rem" onclick="markCarrySelected()">↩ 이월 표시</button>
+    <button class="btn btn-done" style="padding:6px 14px;font-size:0.8rem" onclick="clearCarrySelected()">✓ 이월 해제</button>
+  </div>
+  <div class="vocab-table-wrap">
+    <table id="vocab-table">
+      <thead>
+        <tr id="thead-row">
+          <th style="width:28px">#</th>
+          <th>단어 (한자)</th>
+          <th>후리가나</th>
+          <th>뜻</th>
+          <th>품사</th>
+          <th>이월</th>
+          <th style="width:90px">작업</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── Default Data ──
+const DEFAULT_WORDS = [
+  { id:1, kanji:'食べる', furigana:'たべる', meaning:'먹다', type:'동사' },
+  { id:2, kanji:'飲む', furigana:'のむ', meaning:'마시다', type:'동사' },
+  { id:3, kanji:'学校', furigana:'がっこう', meaning:'학교', type:'명사' },
+  { id:4, kanji:'先生', furigana:'せんせい', meaning:'선생님', type:'명사' },
+  { id:5, kanji:'美しい', furigana:'うつくしい', meaning:'아름답다', type:'형용사' },
+  { id:6, kanji:'分かる', furigana:'わかる', meaning:'이해하다, 알다', type:'동사' },
+  { id:7, kanji:'友達', furigana:'ともだち', meaning:'친구', type:'명사' },
+  { id:8, kanji:'電車', furigana:'でんしゃ', meaning:'전철', type:'명사' },
+];
+
+// ── State ──
+let words = [];
+let quizQueue = [];
+let carrySet = new Set();
+let doneSet = new Set();
+let carryHistory = new Set(); // 한 번이라도 이월된 단어 ID
+let carryCount = {};          // 단어별 이월 횟수 { id: count }
+let carryOnlyMode = false;    // 이월 단어만 복습 모드
+let repeatAllMode = false;    // 전체 단어 반복 모드
+let carryThresholdMode = false; // N회 이상 이월 단어 복습 모드
+let carryThreshold = 2;       // 이월 횟수 기준값
+let currentIdx = 0;
+let revealed = false;
+let roundDone = false; // 이월 모드에서 한 바퀴 완료 여부
+let nextId = 100;
+
+let checkboxMode = false;    // 수정 탭 일괄 선택 모드
+let selectedIds = new Set(); // 선택된 단어 ID
+
+const STORAGE_KEY = 'jp_vocab_v1';
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    words,
+    carrySet: [...carrySet],
+    doneSet: [...doneSet],
+    carryHistory: [...carryHistory],
+    carryCount
+  }));
+}
+
+function load() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) {
+    const d = JSON.parse(raw);
+    words = d.words || DEFAULT_WORDS;
+    carrySet = new Set(d.carrySet || []);
+    doneSet = new Set(d.doneSet || []);
+    carryHistory = new Set(d.carryHistory || []);
+    carryCount = d.carryCount || {};
+  } else {
+    words = JSON.parse(JSON.stringify(DEFAULT_WORDS));
+    carrySet = new Set();
+    doneSet = new Set();
+    carryHistory = new Set();
+    carryCount = {};
+  }
+  nextId = words.reduce((m,w) => Math.max(m, w.id), 0) + 1;
+}
+
+// ── Tab Switching ──
+function switchTab(tab, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (tab === 'edit') renderEditTable();
+  if (tab === 'quiz') renderQuiz();
+}
+
+// ──────────────────────────────────────
+// QUIZ MODE
+// ──────────────────────────────────────
+function buildQueue() {
+  roundDone = false;
+  if (carryThresholdMode) {
+    // N회 이상 이월된 단어만 (완료 여부 무시)
+    const pool = words.filter(w => (carryCount[w.id] || 0) >= carryThreshold);
+    shuffle(pool);
+    quizQueue = pool;
+  } else if (carryOnlyMode) {
+    const pool = words.filter(w => carryHistory.has(w.id));
+    shuffle(pool);
+    quizQueue = pool;
+  } else {
+    // carry words first, then remaining undone words
+    const carried = words.filter(w => carrySet.has(w.id));
+    const fresh = words.filter(w => !doneSet.has(w.id) && !carrySet.has(w.id));
+    shuffle(carried); shuffle(fresh);
+    quizQueue = [...carried, ...fresh];
+  }
+  currentIdx = 0;
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+function updateStats() {
+  const remain = words.filter(w => !doneSet.has(w.id)).length;
+  document.getElementById('stat-remain').textContent = `남은 단어: ${remain}`;
+  document.getElementById('stat-carry').textContent = `이월: ${carrySet.size}`;
+  document.getElementById('stat-done').textContent = `완료: ${doneSet.size}`;
+  let progressTotal, progressDone;
+  if (carryThresholdMode) {
+    const pool = words.filter(w => (carryCount[w.id] || 0) >= carryThreshold);
+    progressTotal = pool.length;
+    progressDone = currentIdx;
+  } else if (carryOnlyMode) {
+    const pool = words.filter(w => carryHistory.has(w.id));
+    progressTotal = pool.length;
+    progressDone = currentIdx;
+  } else {
+    progressTotal = words.length;
+    progressDone = doneSet.size;
+  }
+  const pct = progressTotal ? Math.round(progressDone / progressTotal * 100) : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+
+  // 전체 반복 버튼 (남은 단어 반복)
+  const btnAll = document.getElementById('btn-repeat-all');
+  if (btnAll) {
+    btnAll.textContent = `🔁 전체 다시 반복 (${words.length})`;
+    btnAll.disabled = words.length === 0;
+    btnAll.style.opacity = words.length === 0 ? '0.4' : '';
+  }
+
+  // N회 이상 이월 버튼
+  const btnThresh = document.getElementById('btn-carry-threshold');
+  if (btnThresh) {
+    const threshCount = words.filter(w => (carryCount[w.id] || 0) >= carryThreshold).length;
+    btnThresh.textContent = `🔢 ${carryThreshold}회↑ 이월 (${threshCount})`;
+    btnThresh.classList.toggle('active-mode', carryThresholdMode);
+    btnThresh.disabled = threshCount === 0;
+    btnThresh.style.opacity = threshCount === 0 ? '0.4' : '';
+  }
+}
+
+function renderQuiz() {
+  updateStats();
+  const area = document.getElementById('quiz-area');
+
+  // mode banner
+  let bannerHtml = '';
+  if (carryThresholdMode) {
+    bannerHtml = `<div class="mode-banner" style="background:var(--gold-soft);border-color:var(--gold);color:var(--gold)">🔢 ${carryThreshold}회 이상 이월 단어 복습 중 <button onclick="exitAllModes()" style="border-color:var(--gold);color:var(--gold)">✕ 일반 모드로</button></div>`;
+  } else if (carryOnlyMode) {
+    bannerHtml = `<div class="mode-banner">↩ 이월 단어만 복습 중 <button onclick="exitCarryOnlyMode()">✕ 전체 모드로</button></div>`;
+  }
+
+  // Re-build queue if needed (일반 모드만 자동 재빌드)
+  if (quizQueue.length === 0) {
+    buildQueue();
+  } else if (currentIdx >= quizQueue.length) {
+    if (carryOnlyMode || carryThresholdMode) {
+      roundDone = true;
+    } else {
+      buildQueue();
+    }
+  }
+
+  if (quizQueue.length === 0) {
+    const emptyMsg = carryThresholdMode ? `${carryThreshold}회 이상 이월된 단어가 없습니다.` :
+      carryOnlyMode ? '이월 이력이 있는 단어가 없습니다.' : '등록된 단어가 없습니다.<br>수정 탭에서 단어를 추가해 보세요!';
+    area.innerHTML = bannerHtml + `<div class="quiz-empty">
+      <div class="big-emoji">📚</div>
+      <p>${emptyMsg}</p>
+    </div>`;
+    return;
+  }
+
+  // Check if all done
+  const undone = carryThresholdMode
+    ? words.filter(w => (carryCount[w.id] || 0) >= carryThreshold)
+    : carryOnlyMode
+      ? words.filter(w => carryHistory.has(w.id))
+      : words.filter(w => !doneSet.has(w.id));
+  const isRoundComplete = (carryOnlyMode || carryThresholdMode) ? roundDone : undone.length === 0;
+  if (isRoundComplete || (!carryOnlyMode && !carryThresholdMode && undone.length === 0)) {
+    const doneMsg = carryThresholdMode ? `${carryThreshold}회 이상 이월 단어를 모두 완료했습니다!` :
+      carryOnlyMode ? '이월 단어를 모두 완료했습니다!' : '모든 단어를 완료했습니다!';
+    area.innerHTML = bannerHtml + `<div class="quiz-empty">
+      <div class="big-emoji">🎉</div>
+      <p>${doneMsg}<br>정말 잘 하셨어요!</p>
+      <div class="reset-btn-wrap" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        ${(carryOnlyMode || carryThresholdMode)
+          ? `<button class="btn btn-carry" onclick="restartCarryMode()">🔁 한 바퀴 더</button>
+             <button class="btn btn-primary" onclick="exitAllModes()">↩ 일반 모드로</button>`
+          : `<button class="btn btn-primary" onclick="resetAll()">🔁 처음부터 다시</button>`
+        }
+      </div>
+    </div>`;
+    return;
+  }
+
+  // Rebuild queue now if current is exhausted (일반 모드만)
+  if (currentIdx >= quizQueue.length && !carryOnlyMode && !carryThresholdMode) {
+    buildQueue();
+  }
+
+  const w = quizQueue[currentIdx];
+  if (!w) { if (!carryOnlyMode && !carryThresholdMode) { buildQueue(); renderQuiz(); } return; }
+
+  revealed = false;
+
+  const isCarried = carrySet.has(w.id);
+  const wCarryCount = carryCount[w.id] || 0;
+  const typeBadge = w.type ? `<span class="type-badge">${w.type}</span>` : '';
+  const carryIndicator = isCarried
+    ? `<div style="color:var(--red);font-size:0.78rem;margin-bottom:8px;font-weight:600">↩ 이월 단어${wCarryCount > 0 ? ` (누적 ${wCarryCount}회)` : ''}</div>`
+    : (wCarryCount > 0 ? `<div style="color:var(--gold);font-size:0.75rem;margin-bottom:6px">이월 이력: ${wCarryCount}회</div>` : '');
+
+  area.innerHTML = bannerHtml + `
+    <div class="card-wrapper">
+      <div class="card" id="quiz-card">
+        ${typeBadge}
+        ${carryIndicator}
+        <div class="kanji">${w.kanji}</div>
+        <div class="furigana" id="furi">${w.furigana}</div>
+        <div class="meaning" id="mean">${w.meaning}</div>
+      </div>
+    </div>
+    <div class="btn-row" id="btn-row">
+      <button class="btn btn-reveal" onclick="reveal()">👁 정답 보기</button>
+    </div>
+  `;
+}
+
+function reveal() {
+  document.getElementById('furi').classList.add('show');
+  document.getElementById('mean').classList.add('show');
+  revealed = true;
+
+  document.getElementById('btn-row').innerHTML = `
+    <button class="btn btn-carry" onclick="markCarry()">↩ 이월</button>
+    <button class="btn btn-done" onclick="markDone()">✓ 완료</button>
+  `;
+}
+
+function markCarry() {
+  const w = quizQueue[currentIdx];
+  carrySet.add(w.id);
+  carryHistory.add(w.id);
+  carryCount[w.id] = (carryCount[w.id] || 0) + 1;
+  doneSet.delete(w.id);
+  save();
+  currentIdx++;
+  showToast('이월로 표시했어요');
+  renderQuiz();
+}
+
+function markDone() {
+  const w = quizQueue[currentIdx];
+  doneSet.add(w.id);
+  carrySet.delete(w.id);
+  save();
+  currentIdx++;
+  showToast('완료! 잘 하셨어요 👏');
+  renderQuiz();
+}
+
+function resetAll() {
+  carrySet.clear();
+  doneSet.clear();
+  buildQueue();
+  save();
+  renderQuiz();
+}
+
+function resetCarry() {
+  if (!confirm('이월 표시를 전체 초기화할까요?')) return;
+  carrySet.clear();
+  save();
+  renderEditTable();
+  showToast('이월 초기화 완료');
+}
+
+function toggleCarryOnlyMode() {
+  const histCount = words.filter(w => carryHistory.has(w.id)).length;
+  if (histCount === 0) { showToast('이월한 단어가 없습니다'); return; }
+  carryOnlyMode = !carryOnlyMode;
+  buildQueue();
+  renderQuiz();
+  showToast(carryOnlyMode ? `이월 단어 ${histCount}개 복습 시작!` : '전체 모드로 전환');
+}
+
+function exitCarryOnlyMode() {
+  carryOnlyMode = false;
+  buildQueue();
+  renderQuiz();
+}
+
+function exitAllModes() {
+  carryOnlyMode = false;
+  carryThresholdMode = false;
+  roundDone = false;
+  buildQueue();
+  renderQuiz();
+}
+
+function restartCarryMode() {
+  roundDone = false;
+  buildQueue();
+  renderQuiz();
+}
+
+function repeatRemaining() {
+  if (words.length === 0) { showToast('단어가 없습니다'); return; }
+  // 완료 여부와 무관하게 전체 단어를 셔플해서 다시 반복
+  const pool = [...words];
+  shuffle(pool);
+  quizQueue = pool;
+  currentIdx = 0;
+  renderQuiz();
+  showToast(`전체 ${words.length}개 단어 다시 반복!`);
+}
+
+function toggleCarryThresholdMode() {
+  const threshCount = words.filter(w => (carryCount[w.id] || 0) >= carryThreshold).length;
+  if (threshCount === 0) { showToast(`${carryThreshold}회 이상 이월된 단어가 없습니다`); return; }
+  carryThresholdMode = !carryThresholdMode;
+  if (carryThresholdMode) { carryOnlyMode = false; repeatAllMode = false; }
+  roundDone = false;
+  buildQueue();
+  currentIdx = 0;
+  renderQuiz();
+  showToast(carryThresholdMode ? `${carryThreshold}회↑ 이월 단어 ${threshCount}개 복습!` : '일반 모드로 전환');
+}
+
+function setCarryThreshold(val) {
+  carryThreshold = parseInt(val) || 2;
+  // sync select element
+  const sel = document.getElementById('threshold-select');
+  if (sel) sel.value = String(carryThreshold);
+  updateStats();
+  if (carryThresholdMode) { buildQueue(); currentIdx = 0; renderQuiz(); }
+}
+
+// ──────────────────────────────────────
+// EDIT MODE
+// ──────────────────────────────────────
+function renderEditTable() {
+  const tbody = document.getElementById('tbody');
+  document.getElementById('word-count-label').textContent = `총 ${words.length}개`;
+
+  // Update thead checkbox column
+  const theadRow = document.getElementById('thead-row');
+  if (checkboxMode) {
+    theadRow.cells[0].innerHTML = `<input type="checkbox" id="check-all" onchange="toggleCheckAll(this)" style="cursor:pointer">`;
+  } else {
+    theadRow.cells[0].innerHTML = '#';
+  }
+
+  if (words.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="no-words">단어가 없습니다. 위 버튼으로 추가해 보세요!</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = words.map((w, i) => {
+    const checked = selectedIds.has(w.id) ? 'checked' : '';
+    const firstCell = checkboxMode
+      ? `<td><input type="checkbox" class="row-check" data-id="${w.id}" ${checked} onchange="updateCheckboxSelection(${w.id}, this.checked)" style="cursor:pointer"></td>`
+      : `<td style="color:#aaa;font-size:0.75rem">${i+1}</td>`;
+    const actionCell = checkboxMode
+      ? `<td class="actions-cell" style="color:#bbb;font-size:0.75rem">—</td>`
+      : `<td class="actions-cell">
+          <button class="icon-btn edit-btn" onclick="editRow(${w.id})" title="수정">✏️</button>
+          <button class="icon-btn del-btn" onclick="deleteRow(${w.id})" title="삭제">🗑️</button>
+        </td>`;
+    return `
+      <tr id="row-${w.id}" class="${selectedIds.has(w.id) ? 'row-selected' : ''}" onclick="${checkboxMode ? `toggleRowCheck(${w.id})` : ''}">
+        ${firstCell}
+        <td class="kanji-cell">${esc(w.kanji)}</td>
+        <td class="furigana-cell">${esc(w.furigana)}</td>
+        <td>${esc(w.meaning)}</td>
+        <td class="type-cell">${esc(w.type||'')}</td>
+        <td>${carrySet.has(w.id) ? `<span class="carry-dot"></span>이월${carryCount[w.id] ? ` <span style="font-size:0.72rem;color:var(--gold)">(${carryCount[w.id]}회)</span>` : ''}` : ''}</td>
+        ${actionCell}
+      </tr>
+    `;
+  }).join('');
+
+  updateSelectedCountLabel();
+}
+
+function editRow(id) {
+  const w = words.find(x => x.id === id);
+  if (!w) return;
+  const row = document.getElementById('row-' + id);
+  row.classList.add('editing');
+  row.innerHTML = `
+    <td style="color:#aaa;font-size:0.75rem">${words.indexOf(w)+1}</td>
+    <td><input id="e-kanji-${id}" value="${esc(w.kanji)}" placeholder="한자/단어" /></td>
+    <td><input id="e-furi-${id}" value="${esc(w.furigana)}" placeholder="후리가나" /></td>
+    <td><input id="e-mean-${id}" value="${esc(w.meaning)}" placeholder="뜻" /></td>
+    <td>
+      <select id="e-type-${id}">
+        ${['명사','동사','형용사','나형용사','부사','조사','접속사','기타'].map(t =>
+          `<option${w.type===t?' selected':''}>${t}</option>`
+        ).join('')}
+      </select>
+    </td>
+    <td></td>
+    <td class="actions-cell">
+      <button class="icon-btn save-btn" onclick="saveRow(${id})">💾</button>
+      <button class="icon-btn cancel-btn" onclick="renderEditTable()">✕</button>
+    </td>
+  `;
+  document.getElementById('e-kanji-' + id).focus();
+}
+
+function saveRow(id) {
+  const w = words.find(x => x.id === id);
+  if (!w) return;
+  w.kanji = document.getElementById('e-kanji-' + id).value.trim();
+  w.furigana = document.getElementById('e-furi-' + id).value.trim();
+  w.meaning = document.getElementById('e-mean-' + id).value.trim();
+  w.type = document.getElementById('e-type-' + id).value;
+  if (!w.kanji) { showToast('단어를 입력해 주세요'); return; }
+  save();
+  renderEditTable();
+  showToast('저장되었습니다');
+}
+
+function deleteRow(id) {
+  if (!confirm('이 단어를 삭제할까요?')) return;
+  words = words.filter(w => w.id !== id);
+  carrySet.delete(id);
+  doneSet.delete(id);
+  save();
+  renderEditTable();
+  showToast('삭제되었습니다');
+}
+
+// ── Excel Export / Import ──
+function exportExcel() {
+  const data = words.map(w => ({
+    'ID': w.id,
+    '단어(한자)': w.kanji,
+    '후리가나': w.furigana,
+    '뜻': w.meaning,
+    '품사': w.type,
+    '이월횟수': carryCount[w.id] || 0,
+    '이월중': carrySet.has(w.id) ? 'Y' : '',
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(data);
+
+  // 컬럼 너비 설정
+  ws['!cols'] = [
+    { wch: 8 },  // ID
+    { wch: 16 }, // 단어
+    { wch: 16 }, // 후리가나
+    { wch: 28 }, // 뜻
+    { wch: 10 }, // 품사
+    { wch: 10 }, // 이월횟수
+    { wch: 8 },  // 이월중
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '단어장');
+  XLSX.writeFile(wb, '일본어_단어장.xlsx');
+  showToast('엑셀 파일로 내보냈습니다');
+}
+
+function importExcel(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws);
+
+      if (rows.length === 0) { showToast('데이터가 없습니다'); return; }
+
+      // 필수 컬럼 확인
+      const first = rows[0];
+      const hasKanji = '단어(한자)' in first;
+      const hasFuri  = '후리가나' in first;
+      const hasMean  = '뜻' in first;
+      if (!hasKanji || !hasFuri || !hasMean) {
+        showToast('형식 오류: 단어(한자), 후리가나, 뜻 컬럼이 필요합니다');
+        return;
+      }
+
+      if (!confirm(`${rows.length}개 단어를 가져옵니다.\n현재 단어장을 덮어씁니까?\n\n[확인] 전체 교체  /  [취소] 추가`)) {
+        // 취소 → 추가 모드
+        rows.forEach(r => {
+          const id = nextId++;
+          words.push({
+            id,
+            kanji:    String(r['단어(한자)'] || '').trim(),
+            furigana: String(r['후리가나']   || '').trim(),
+            meaning:  String(r['뜻']         || '').trim(),
+            type:     String(r['품사']        || '명사').trim(),
+          });
+        });
+        showToast(`${rows.length}개 단어를 추가했습니다`);
+      } else {
+        // 확인 → 교체 모드
+        carrySet.clear(); doneSet.clear(); carryHistory.clear(); carryCount = {};
+        words = rows.map(r => {
+          const id = r['ID'] ? Number(r['ID']) : nextId++;
+          return {
+            id,
+            kanji:    String(r['단어(한자)'] || '').trim(),
+            furigana: String(r['후리가나']   || '').trim(),
+            meaning:  String(r['뜻']         || '').trim(),
+            type:     String(r['품사']        || '명사').trim(),
+          };
+        });
+        nextId = words.reduce((m, w) => Math.max(m, w.id), 0) + 1;
+        showToast(`${rows.length}개 단어로 교체했습니다`);
+      }
+
+      save();
+      renderEditTable();
+      buildQueue();
+    } catch(err) {
+      showToast('파일 읽기 실패: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+
+  // 같은 파일 재선택 가능하도록 초기화
+  event.target.value = '';
+}
+
+function addRow() {
+  const id = nextId++;
+  words.push({ id, kanji: '', furigana: '', meaning: '', type: '명사' });
+  save();
+  renderEditTable();
+  // Start editing immediately
+  editRow(id);
+  // Scroll to bottom
+  setTimeout(() => {
+    const row = document.getElementById('row-' + id);
+    if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 50);
+}
+
+// ── Checkbox Mode ──
+function toggleCheckboxMode() {
+  checkboxMode = !checkboxMode;
+  selectedIds.clear();
+  const btn = document.getElementById('btn-checkbox-mode');
+  const bar = document.getElementById('checkbox-action-bar');
+  if (checkboxMode) {
+    btn.style.background = 'var(--blue)';
+    btn.style.color = 'white';
+    bar.style.display = 'flex';
+  } else {
+    btn.style.background = 'var(--blue-soft)';
+    btn.style.color = 'var(--blue)';
+    bar.style.display = 'none';
+  }
+  renderEditTable();
+}
+
+function toggleRowCheck(id) {
+  if (!checkboxMode) return;
+  if (selectedIds.has(id)) selectedIds.delete(id);
+  else selectedIds.add(id);
+  // update the row visually
+  const row = document.getElementById('row-' + id);
+  if (row) {
+    row.classList.toggle('row-selected', selectedIds.has(id));
+    const cb = row.querySelector('.row-check');
+    if (cb) cb.checked = selectedIds.has(id);
+  }
+  updateSelectedCountLabel();
+}
+
+function updateCheckboxSelection(id, checked) {
+  if (checked) selectedIds.add(id);
+  else selectedIds.delete(id);
+  const row = document.getElementById('row-' + id);
+  if (row) row.classList.toggle('row-selected', checked);
+  updateSelectedCountLabel();
+}
+
+function toggleCheckAll(cb) {
+  if (cb.checked) words.forEach(w => selectedIds.add(w.id));
+  else selectedIds.clear();
+  renderEditTable();
+}
+
+function selectAllCheckboxes() {
+  words.forEach(w => selectedIds.add(w.id));
+  renderEditTable();
+}
+
+function deselectAllCheckboxes() {
+  selectedIds.clear();
+  renderEditTable();
+}
+
+function updateSelectedCountLabel() {
+  const el = document.getElementById('selected-count-label');
+  if (el) el.textContent = `${selectedIds.size}개 선택됨`;
+}
+
+function deleteSelected() {
+  if (selectedIds.size === 0) { showToast('선택된 단어가 없습니다'); return; }
+  if (!confirm(`선택한 ${selectedIds.size}개 단어를 삭제할까요?`)) return;
+  words = words.filter(w => !selectedIds.has(w.id));
+  selectedIds.forEach(id => { carrySet.delete(id); doneSet.delete(id); });
+  selectedIds.clear();
+  save();
+  renderEditTable();
+  showToast('선택 단어 삭제 완료');
+}
+
+function markCarrySelected() {
+  if (selectedIds.size === 0) { showToast('선택된 단어가 없습니다'); return; }
+  selectedIds.forEach(id => {
+    carrySet.add(id);
+    carryHistory.add(id);
+    carryCount[id] = (carryCount[id] || 0) + 1;
+    doneSet.delete(id);
+  });
+  save();
+  renderEditTable();
+  showToast(`${selectedIds.size}개 단어를 이월 표시했습니다`);
+}
+
+function clearCarrySelected() {
+  if (selectedIds.size === 0) { showToast('선택된 단어가 없습니다'); return; }
+  selectedIds.forEach(id => carrySet.delete(id));
+  save();
+  renderEditTable();
+  showToast(`${selectedIds.size}개 단어의 이월을 해제했습니다`);
+}
+
+// ── Helpers ──
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ──────────────────────────────────────
+// KEYBOARD SHORTCUTS
+// ──────────────────────────────────────
+const KB_STORAGE_KEY = 'jp_vocab_kb_v1';
+const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+                 (navigator.maxTouchPoints > 1 && !/Win/.test(navigator.platform));
+
+// keyBindings: { reveal: 'Space', carry: 'ArrowLeft', done: 'ArrowRight' }
+let keyBindings = { reveal: '', carry: '', done: '' };
+let capturingFor = null; // which action is being captured
+
+function loadKbBindings() {
+  try {
+    const raw = localStorage.getItem(KB_STORAGE_KEY);
+    if (raw) keyBindings = { ...keyBindings, ...JSON.parse(raw) };
+  } catch(e) {}
+}
+
+function saveKbBindings() {
+  localStorage.setItem(KB_STORAGE_KEY, JSON.stringify(keyBindings));
+}
+
+function openKbModal() {
+  if (isMobile) return; // don't open on mobile (no physical keyboard)
+  capturingFor = null;
+  syncKbModal();
+  document.getElementById('kb-modal').classList.add('open');
+}
+
+function closeKbModal() {
+  capturingFor = null;
+  document.querySelectorAll('.kb-capture-btn').forEach(b => b.classList.remove('listening'));
+  document.getElementById('kb-modal').classList.remove('open');
+}
+
+function closeKbModalOnOverlay(e) {
+  if (e.target === document.getElementById('kb-modal')) closeKbModal();
+}
+
+function syncKbModal() {
+  ['reveal','carry','done'].forEach(action => {
+    const btn = document.getElementById('kbcap-' + action);
+    if (btn) btn.textContent = formatKey(keyBindings[action]) || '—';
+  });
+}
+
+function formatKey(key) {
+  if (!key) return '';
+  const map = { ' ': 'Space', 'ArrowLeft': '←', 'ArrowRight': '→', 'ArrowUp': '↑', 'ArrowDown': '↓',
+    'Enter': 'Enter', 'Backspace': '⌫', 'Escape': 'Esc', 'Tab': 'Tab' };
+  return map[key] || (key.length === 1 ? key.toUpperCase() : key);
+}
+
+function startCapture(action) {
+  capturingFor = action;
+  document.querySelectorAll('.kb-capture-btn').forEach(b => b.classList.remove('listening'));
+  const btn = document.getElementById('kbcap-' + action);
+  if (btn) {
+    btn.textContent = '키 입력…';
+    btn.classList.add('listening');
+  }
+}
+
+function clearKey(action) {
+  keyBindings[action] = '';
+  saveKbBindings();
+  syncKbModal();
+  updateKbHintBar();
+}
+
+// Keyboard event listener — global
+document.addEventListener('keydown', function(e) {
+  const modal = document.getElementById('kb-modal');
+  const modalOpen = modal && modal.classList.contains('open');
+
+  // Ignore if typing in an input/select (edit tab)
+  if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
+
+  // ── Capture mode (modal open) ──
+  if (modalOpen && capturingFor) {
+    e.preventDefault();
+    const blocked = ['Escape', 'Tab', 'F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12'];
+    if (blocked.includes(e.key)) {
+      if (e.key === 'Escape') { capturingFor = null; syncKbModal(); }
+      return;
+    }
+    // Conflict check
+    const conflict = Object.entries(keyBindings).find(([k,v]) => v === e.key && k !== capturingFor);
+    if (conflict) {
+      keyBindings[conflict[0]] = '';
+    }
+    keyBindings[capturingFor] = e.key;
+    capturingFor = null;
+    saveKbBindings();
+    syncKbModal();
+    updateKbHintBar();
+    document.querySelectorAll('.kb-capture-btn').forEach(b => b.classList.remove('listening'));
+    return;
+  }
+
+  // Close modal on Escape
+  if (modalOpen && e.key === 'Escape') { closeKbModal(); return; }
+  if (modalOpen) return;
+
+  // ── Quiz shortcut mode ──
+  const quizPage = document.getElementById('page-quiz');
+  if (!quizPage || !quizPage.classList.contains('active')) return;
+
+  const { reveal: rk, carry: ck, done: dk } = keyBindings;
+  if (!rk && !ck && !dk) return;
+
+  if (rk && e.key === rk && !revealed) { e.preventDefault(); reveal(); return; }
+  if (ck && e.key === ck && revealed)  { e.preventDefault(); markCarry(); return; }
+  if (dk && e.key === dk && revealed)  { e.preventDefault(); markDone(); return; }
+  // also allow reveal key to advance after revealed (skip to next via done)
+});
+
+function updateKbHintBar() {
+  const bar = document.getElementById('kb-hint-bar');
+  if (!bar) return;
+  if (isMobile) { bar.style.display = 'none'; return; }
+
+  const hints = [];
+  if (keyBindings.reveal) hints.push({ label: '정답', key: keyBindings.reveal, color: 'var(--gold)' });
+  if (keyBindings.carry)  hints.push({ label: '이월', key: keyBindings.carry,  color: 'var(--red)' });
+  if (keyBindings.done)   hints.push({ label: '완료', key: keyBindings.done,   color: 'var(--green)' });
+
+  if (hints.length === 0) { bar.style.display = 'none'; return; }
+
+  bar.style.display = 'flex';
+  bar.innerHTML = hints.map((h, i) =>
+    `<span class="kb-hint-item">
+      <span class="kb-key">${formatKey(h.key)}</span>
+      <span style="color:${h.color};font-weight:600">${h.label}</span>
+    </span>${i < hints.length-1 ? '<span class="kb-hint-sep">|</span>' : ''}`
+  ).join('');
+}
+
+// Hide keyboard settings button on mobile
+if (isMobile) {
+  document.addEventListener('DOMContentLoaded', function() {
+    const btn = document.querySelector('.kb-settings-btn');
+    if (btn) btn.style.display = 'none';
+  });
+}
+
+// ── Init ──
+load();
+loadKbBindings();
+buildQueue();
+renderQuiz();
+updateKbHintBar();
+</script>
+</body>
+</html>
