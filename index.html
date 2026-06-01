@@ -177,6 +177,12 @@
     gap: 10px;
     justify-content: center;
     flex-wrap: wrap;
+    width: 100%;
+  }
+  .btn-row .btn {
+    flex: 1;
+    justify-content: center;
+    min-width: 0;
   }
   .btn {
     padding: 12px 24px;
@@ -575,6 +581,128 @@
     border-bottom: 2px solid rgba(0,0,0,0.4);
   }
   .kb-hint-sep { color: var(--border); }
+
+  /* ── Backup Modal ── */
+  .backup-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 4px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: white;
+  }
+  .backup-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--paper2);
+    transition: background 0.15s;
+  }
+  .backup-item:last-child { border-bottom: none; }
+  .backup-item:hover { background: #faf8f4; }
+  .backup-item-info { flex: 1; min-width: 0; }
+  .backup-item-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .backup-item-meta {
+    font-size: 0.72rem;
+    color: #999;
+    margin-top: 2px;
+  }
+  .backup-item-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .backup-action-btn {
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .backup-action-btn.dl  { border-color: var(--green); color: var(--green); }
+  .backup-action-btn.dl:hover  { background: var(--green); color: white; }
+  .backup-action-btn.del { border-color: var(--red); color: var(--red); }
+  .backup-action-btn.del:hover { background: var(--red); color: white; }
+  .backup-empty {
+    text-align: center;
+    padding: 32px 16px;
+    color: #aaa;
+    font-size: 0.85rem;
+  }
+  .backup-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .backup-header-row h3 { font-size: 0.85rem; font-weight: 600; color: #777; }
+
+  /* ── Import Confirm Modal ── */
+  .import-confirm-modal {
+    background: var(--paper);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 24px 22px;
+    width: min(380px, 92vw);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  }
+  .import-confirm-modal h2 {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 1.05rem;
+    margin-bottom: 8px;
+    color: var(--ink);
+  }
+  .import-confirm-modal .ic-desc {
+    font-size: 0.82rem;
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    padding: 10px 12px;
+    background: var(--paper2);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+  .import-confirm-modal .ic-desc strong { color: var(--ink); }
+  .ic-btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ic-btn {
+    width: 100%;
+    padding: 11px 16px;
+    border-radius: 7px;
+    border: 1.5px solid;
+    cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.15s;
+  }
+  .ic-btn:active { transform: translateY(1px); }
+  .ic-btn-replace { background: var(--red-soft); border-color: var(--red); color: var(--red); }
+  .ic-btn-replace:hover { background: var(--red); color: white; }
+  .ic-btn-add { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+  .ic-btn-add:hover { background: var(--green); color: white; }
+  .ic-btn-cancel { background: white; border-color: var(--border); color: #777; }
+  .ic-btn-cancel:hover { background: var(--paper2); color: var(--ink); }
+  .ic-btn-icon { font-size: 1.1rem; flex-shrink: 0; }
+  .ic-btn-text { display: flex; flex-direction: column; gap: 1px; }
+  .ic-btn-title { font-size: 0.88rem; font-weight: 600; }
+  .ic-btn-sub { font-size: 0.73rem; opacity: 0.8; font-weight: 400; }
 </style>
 </head>
 <body>
@@ -616,6 +744,53 @@
   </div>
 </div>
 
+<!-- ── Backup Modal ── -->
+<div class="modal-overlay" id="backup-modal" onclick="closeBackupModalOnOverlay(event)">
+  <div class="modal" style="width:min(520px,95vw)">
+    <button class="modal-close" onclick="closeBackupModal()">✕</button>
+    <h2>💾 백업 관리</h2>
+    <p class="modal-desc">엑셀 내보내기·가져오기(덮어쓰기) 시 자동으로 백업이 생성됩니다.<br>최대 20개까지 보관되며, 각 백업을 엑셀로 다운로드할 수 있습니다.</p>
+    <div class="backup-header-row">
+      <h3 id="backup-count-label">저장된 백업: 0개</h3>
+      <button class="backup-action-btn del" onclick="clearAllBackups()" style="font-size:0.72rem">🗑 전체 삭제</button>
+    </div>
+    <div class="backup-list" id="backup-list-el">
+      <div class="backup-empty">백업이 없습니다</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Import Confirm Modal ── -->
+<div class="modal-overlay" id="import-confirm-modal">
+  <div class="import-confirm-modal">
+    <h2>📤 엑셀 가져오기</h2>
+    <div class="ic-desc" id="ic-desc-text"></div>
+    <div class="ic-btn-group">
+      <button class="ic-btn ic-btn-replace" onclick="importConfirmChoice('replace')">
+        <span class="ic-btn-icon">🔄</span>
+        <span class="ic-btn-text">
+          <span class="ic-btn-title">전체 교체</span>
+          <span class="ic-btn-sub">현재 단어장을 모두 지우고 새 데이터로 덮어씁니다</span>
+        </span>
+      </button>
+      <button class="ic-btn ic-btn-add" onclick="importConfirmChoice('add')">
+        <span class="ic-btn-icon">➕</span>
+        <span class="ic-btn-text">
+          <span class="ic-btn-title">추가</span>
+          <span class="ic-btn-sub">기존 단어장에 새 데이터를 이어서 추가합니다</span>
+        </span>
+      </button>
+      <button class="ic-btn ic-btn-cancel" onclick="importConfirmChoice('cancel')">
+        <span class="ic-btn-icon">✕</span>
+        <span class="ic-btn-text">
+          <span class="ic-btn-title">취소</span>
+          <span class="ic-btn-sub">가져오기를 중단합니다</span>
+        </span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ── QUIZ PAGE ── -->
 <div class="page active" id="page-quiz">
   <div class="quiz-stats">
@@ -652,6 +827,7 @@
       📤 엑셀 가져오기
       <input type="file" id="excel-import-input" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
     </label>
+    <button class="btn" onclick="openBackupModal()" style="border-color:#7c5cbf;background:#ede8f8;color:#7c5cbf" title="백업 관리">💾 백업</button>
     <span id="word-count-label"></span>
   </div>
   <!-- 체크박스 모드 액션 바 -->
@@ -1153,7 +1329,14 @@ function renderEditTable() {
         <td class="furigana-cell">${esc(w.furigana)}</td>
         <td>${esc(w.meaning)}</td>
         <td class="type-cell">${esc(w.type||'')}</td>
-        <td>${carrySet.has(w.id) ? `<span class="carry-dot"></span>이월${carryCount[w.id] ? ` <span style="font-size:0.72rem;color:var(--gold)">(${carryCount[w.id]}회)</span>` : ''}` : ''}</td>
+        <td>${(() => {
+          const cnt = carryCount[w.id] || 0;
+          const inCarry = carrySet.has(w.id);
+          if (inCarry && cnt > 0)  return `<span class="carry-dot"></span>이월 <span style="font-size:0.72rem;color:var(--gold)">(${cnt}회)</span>`;
+          if (inCarry)             return `<span class="carry-dot"></span>이월`;
+          if (cnt > 0)             return `<span style="font-size:0.78rem;color:var(--gold)">이력 ${cnt}회</span>`;
+          return '';
+        })()}</td>
         ${actionCell}
       </tr>
     `;
@@ -1252,6 +1435,121 @@ async function deleteRow(id) {
   }
 }
 
+// ── Backup System ──
+const BACKUP_KEY = 'jp_vocab_backups_v1';
+const BACKUP_MAX = 20;
+
+function loadBackups() {
+  try {
+    const raw = localStorage.getItem(BACKUP_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch(e) { return []; }
+}
+
+function saveBackups(backups) {
+  localStorage.setItem(BACKUP_KEY, JSON.stringify(backups));
+}
+
+function createBackup(label) {
+  const backups = loadBackups();
+  const now = new Date();
+  const ts = now.toLocaleString('ko-KR', { year:'2-digit', month:'2-digit', day:'2-digit',
+    hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false });
+  const entry = {
+    id: Date.now(),
+    label: label,
+    ts: ts,
+    wordCount: words.length,
+    data: words.map(w => ({
+      id: w.id,
+      kanji: w.kanji,
+      furigana: w.furigana,
+      meaning: w.meaning,
+      type: w.type,
+      carryCount: carryCount[w.id] || 0,
+      isCarry: carrySet.has(w.id) ? 'Y' : '',
+    }))
+  };
+  backups.unshift(entry);
+  if (backups.length > BACKUP_MAX) backups.length = BACKUP_MAX;
+  saveBackups(backups);
+}
+
+function downloadBackup(id) {
+  const backups = loadBackups();
+  const entry = backups.find(b => b.id === id);
+  if (!entry) { showToast('백업을 찾을 수 없습니다'); return; }
+
+  const ws = XLSX.utils.json_to_sheet(entry.data.map(w => ({
+    'ID': w.id,
+    '단어(한자)': w.kanji,
+    '후리가나': w.furigana,
+    '뜻': w.meaning,
+    '품사': w.type,
+    '이월횟수': w.carryCount,
+    '이월중': w.isCarry,
+  })));
+  ws['!cols'] = [
+    { wch: 8 }, { wch: 16 }, { wch: 16 }, { wch: 28 }, { wch: 10 }, { wch: 10 }, { wch: 8 }
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '단어장');
+  const safeName = entry.label.replace(/[\\/:*?"<>|]/g, '_');
+  XLSX.writeFile(wb, `백업_${safeName}.xlsx`);
+  showToast('백업 다운로드 완료');
+}
+
+function deleteBackup(id) {
+  const backups = loadBackups().filter(b => b.id !== id);
+  saveBackups(backups);
+  renderBackupList();
+  showToast('백업을 삭제했습니다');
+}
+
+function clearAllBackups() {
+  if (!confirm('모든 백업을 삭제할까요?')) return;
+  saveBackups([]);
+  renderBackupList();
+  showToast('모든 백업이 삭제됐습니다');
+}
+
+function renderBackupList() {
+  const backups = loadBackups();
+  const el = document.getElementById('backup-list-el');
+  const countEl = document.getElementById('backup-count-label');
+  if (countEl) countEl.textContent = `저장된 백업: ${backups.length}개 / 최대 ${BACKUP_MAX}개`;
+  if (!el) return;
+  if (backups.length === 0) {
+    el.innerHTML = '<div class="backup-empty">백업이 없습니다</div>';
+    return;
+  }
+  el.innerHTML = backups.map(b => `
+    <div class="backup-item">
+      <div class="backup-item-info">
+        <div class="backup-item-name">${esc(b.label)}</div>
+        <div class="backup-item-meta">${b.ts} · ${b.wordCount}개 단어</div>
+      </div>
+      <div class="backup-item-actions">
+        <button class="backup-action-btn dl" onclick="downloadBackup(${b.id})">⬇ 다운로드</button>
+        <button class="backup-action-btn del" onclick="deleteBackup(${b.id})">삭제</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openBackupModal() {
+  renderBackupList();
+  document.getElementById('backup-modal').classList.add('open');
+}
+
+function closeBackupModal() {
+  document.getElementById('backup-modal').classList.remove('open');
+}
+
+function closeBackupModalOnOverlay(e) {
+  if (e.target === document.getElementById('backup-modal')) closeBackupModal();
+}
+
 // ── Excel Export / Import ──
 function exportExcel() {
   const data = words.map(w => ({
@@ -1280,12 +1578,17 @@ function exportExcel() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '단어장');
   XLSX.writeFile(wb, '일본어_단어장.xlsx');
+  createBackup('내보내기');
   showToast('엑셀 파일로 내보냈습니다');
 }
+
+let _importPendingWords = null;
+let _importResolve = null;
 
 function importExcel(event) {
   const file = event.target.files[0];
   if (!file) return;
+  event.target.value = '';
 
   const reader = new FileReader();
   reader.onload = async function(e) {
@@ -1297,10 +1600,7 @@ function importExcel(event) {
       if (rows.length === 0) { showToast('데이터가 없습니다'); return; }
 
       const first = rows[0];
-      const hasKanji = '단어(한자)' in first;
-      const hasFuri  = '후리가나' in first;
-      const hasMean  = '뜻' in first;
-      if (!hasKanji || !hasFuri || !hasMean) {
+      if (!('단어(한자)' in first) || !('후리가나' in first) || !('뜻' in first)) {
         showToast('형식 오류: 단어(한자), 후리가나, 뜻 컬럼이 필요합니다');
         return;
       }
@@ -1312,11 +1612,14 @@ function importExcel(event) {
         type:     String(r['품사']        || '명사').trim(),
       }));
 
-      const replace = confirm(`${rows.length}개 단어를 가져옵니다.\n현재 단어장을 덮어씁니까?\n\n[확인] 전체 교체  /  [취소] 추가`);
+      // 커스텀 모달로 선택 받기
+      const choice = await showImportConfirm(rows.length);
+      if (choice === 'cancel') { showToast('가져오기가 취소됐습니다'); return; }
 
+      const replace = (choice === 'replace');
       showSyncStatus('saving');
       if (replace) {
-        // 전체 교체: 기존 삭제 후 INSERT
+        createBackup(`가져오기 전 백업 (${words.length}개)`);
         await sbFetch('vocab_words?id=gte.0', { method: 'DELETE', prefer: '' });
         carrySet.clear(); doneSet.clear(); carryHistory.clear(); carryCount = {};
       }
@@ -1344,7 +1647,21 @@ function importExcel(event) {
     }
   };
   reader.readAsArrayBuffer(file);
-  event.target.value = '';
+}
+
+function showImportConfirm(count) {
+  return new Promise(resolve => {
+    _importResolve = resolve;
+    const desc = document.getElementById('ic-desc-text');
+    if (desc) desc.innerHTML =
+      `파일에서 <strong>${count}개</strong>의 단어를 발견했습니다.<br>어떻게 처리할까요?`;
+    document.getElementById('import-confirm-modal').classList.add('open');
+  });
+}
+
+function importConfirmChoice(choice) {
+  document.getElementById('import-confirm-modal').classList.remove('open');
+  if (_importResolve) { _importResolve(choice); _importResolve = null; }
 }
 
 function addRow() {
