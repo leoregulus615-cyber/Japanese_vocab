@@ -758,10 +758,13 @@ function loadProgress() {
     const raw = localStorage.getItem(STORAGE_KEY + '_progress');
     if (raw) {
       const d = JSON.parse(raw);
-      carrySet     = new Set(d.carrySet || []);
-      doneSet      = new Set(d.doneSet || []);
-      carryHistory = new Set(d.carryHistory || []);
-      carryCount   = d.carryCount || {};
+      // ID를 숫자로 통일 (Supabase ID는 숫자, JSON 직렬화시 타입 불일치 방지)
+      carrySet     = new Set((d.carrySet || []).map(Number));
+      doneSet      = new Set((d.doneSet || []).map(Number));
+      carryHistory = new Set((d.carryHistory || []).map(Number));
+      const rawCount = d.carryCount || {};
+      carryCount = {};
+      Object.entries(rawCount).forEach(([k, v]) => { carryCount[Number(k)] = v; });
     }
   } catch(e) {}
 }
