@@ -1423,9 +1423,10 @@ function renderQuiz() {
         <div class="kanji">${w.kanji}</div>
         <div class="furigana" id="furi">${w.furigana}</div>
         <div class="meaning" id="mean">${w.meaning}</div>
+        ${(!optsSettings.ttsAutoplay && !optsSettings.ttsAutoReveal) ? `
         <div class="card-tts-wrap">
           <button class="btn-tts" id="tts-btn-card" onclick="speakCurrentWord(this)" title="발음 듣기">🔊</button>
-        </div>
+        </div>` : ''}
       </div>
     </div>
     <div class="btn-row" id="btn-row">
@@ -1447,8 +1448,8 @@ function reveal() {
 
   // 정답 공개 시 자동 발음
   if (optsSettings.ttsAutoReveal) {
-    const btn = document.getElementById('tts-btn-card');
-    if (btn) speakCurrentWord(btn);
+    const btn = document.getElementById('tts-btn-card') || document.createElement('button');
+    speakCurrentWord(btn);
   }
 }
 
@@ -1783,20 +1784,12 @@ function speakWord(btn, text) {
   _ttsActiveBtn = btn;
   btn.classList.add('speaking', 'was-speaking');
 
-  const onOk   = () => {}; // 애니메이션은 onend/_ttsReset에서 처리
-  const onFail = () => {
-    // Google 실패 → WebSpeech 시도
-    _speakViaWebSpeech(text,
-      onOk,
-      () => {
-        // 둘 다 실패
-        _ttsReset();
-        showToast('음성을 재생할 수 없습니다.\n일본어 음성 팩이 설치되어 있는지 확인하세요.');
-      }
-    );
-  };
+  const onOk = () => {};
 
-  _speakViaGoogle(text, onOk, onFail);
+  _speakViaWebSpeech(text, onOk, () => {
+    _ttsReset();
+    showToast('음성을 재생할 수 없습니다.\n일본어 음성 팩이 설치되어 있는지 확인하세요.');
+  });
 }
 
 function speakCurrentWord(btn) {
@@ -2182,6 +2175,8 @@ function saveOptsSettings() {
   optsSettings.ttsVolume     = parseInt(document.getElementById('opt-tts-volume').value);
   optsSettings.ttsRate       = parseInt(document.getElementById('opt-tts-rate').value);
   localStorage.setItem(OPTS_KEY, JSON.stringify(optsSettings));
+  // 버튼 표시 여부 즉시 반영
+  renderQuiz();
 }
 
 function syncOptsUI() {
@@ -2229,8 +2224,8 @@ function switchOptsTab(tab, btn) {
 // 카드 클릭 핸들러
 function onCardClick() {
   if (!optsSettings.ttsAutoplay) return;
-  const btn = document.getElementById('tts-btn-card');
-  if (btn) speakCurrentWord(btn);
+  const btn = document.getElementById('tts-btn-card') || document.createElement('button');
+  speakCurrentWord(btn);
 }
 
 // ──────────────────────────────────────
@@ -2384,4 +2379,3 @@ function updateKbHintBar() {
 </script>
 </body>
 </html>
-
