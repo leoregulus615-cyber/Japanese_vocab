@@ -1964,7 +1964,17 @@ function renderQuiz() {
   }
 
   const w = quizQueue[currentIdx];
-  if (!w) { if (!carryOnlyMode && !carryThresholdMode) { buildQueue(); renderQuiz(); } return; }
+  if (!w) {
+    // 큐 소진 — 완료 메시지 표시 (재귀 절대 금지)
+    area.innerHTML = bannerHtml + `<div class="quiz-empty">
+      <div class="big-emoji">🎉</div>
+      <p>모든 단어를 완료했어요!</p>
+      <div class="reset-btn-wrap">
+        <button class="btn btn-primary" onclick="resetAll()">🔁 처음부터 다시</button>
+      </div>
+    </div>`;
+    return;
+  }
 
   revealed = false;
 
