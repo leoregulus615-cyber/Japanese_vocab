@@ -168,7 +168,7 @@
   /* ruby 후리가나 스타일 (단어 카드) */
   .card .kanji ruby { ruby-align: center; }
   .card .kanji rt {
-    font-size: 0.28em;
+    font-size: 0.38em;
     font-weight: 700;
     color: var(--mint);
     opacity: 0;
@@ -230,7 +230,7 @@
     width: 100%;
   }
   .btn-row .btn {
-    width: 100%;
+    flex: 1;
     justify-content: center;
     min-width: 0;
   }
@@ -271,6 +271,7 @@
     transition: all 0.2s;
   }
   .btn-carry-review:hover { background: var(--mint); color: white; }
+
   .btn-carry-review.active-mode {
     background: var(--mint);
     color: white;
@@ -1196,6 +1197,10 @@
   }
   .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
   .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes milestone-in {
+    from { opacity: 0; transform: scale(0.7); }
+    to   { opacity: 1; transform: scale(1); }
+  }
   @keyframes dot-bounce {
     0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
     40% { transform: translateY(-8px); opacity: 1; }
@@ -1309,7 +1314,7 @@
             <div class="vol-row">
               <span style="font-size:0.8rem;color:#999">🔇</span>
               <input type="range" class="vol-slider" id="opt-tts-volume"
-                min="0" max="100" step="5" value="100"
+                min="0" max="100" step="5" value="50"
                 oninput="updateVolumeDisplay(this.value)" onchange="saveOptsSettings()">
               <span class="vol-val" id="volume-display">100%</span>
               <span style="font-size:0.8rem;color:#999">🔊</span>
@@ -1369,6 +1374,18 @@
             <input type="checkbox" id="opt-show-example" onchange="saveOptsSettings()" checked>
             <span class="toggle-track"></span>
           </label>
+        </div>
+        <div class="opts-row">
+          <div>
+            <div class="opts-row-label">🎉 완료 마일스톤 알림</div>
+            <div class="opts-row-sub">N개 완료할 때마다 팝업을 띄웁니다. 0이면 비활성화.</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+              <input type="number" id="opt-milestone" min="0" max="9999" step="1" value="50"
+                style="width:72px;border:1.5px solid var(--border);border-radius:6px;padding:5px 8px;font-family:inherit;font-size:0.88rem;text-align:center"
+                onchange="saveOptsSettings()">
+              <span style="font-size:0.82rem;color:#888">개마다</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1459,9 +1476,9 @@
     </div>
     <div class="quiz-stats-row">
       <button class="btn btn-carry-review" id="btn-repeat-all" onclick="repeatRemaining()" style="border-color:var(--mint-deep);background:var(--mint-pale);color:var(--mint-deep)" title="완료 여부와 무관하게 전체 단어 반복">🔁 전체반복</button>
-      <span class="threshold-wrap" style="display:flex;align-items:center;gap:4px">
+      <span style="display:flex;align-items:center;gap:4px">
         <button class="btn btn-carry-review" id="btn-carry-threshold" onclick="toggleCarryThresholdMode()" style="border-color:var(--mint);background:var(--mint-soft);color:var(--mint)" title="N회 이상 이월된 단어만 복습">↩ 이월복습</button>
-        <select id="threshold-select" onchange="setCarryThreshold(this.value)" style="border:1.5px solid var(--mint);border-radius:4px;padding:4px 6px;font-size:0.78rem;background:var(--mint-soft);color:var(--mint);cursor:pointer;font-family:inherit">
+        <select id="threshold-select" onchange="setCarryThreshold(this.value)" style="border:1.5px solid var(--mint);border-radius:4px;padding:4px 6px;font-size:0.78rem;background:var(--mint-soft);color:var(--mint);cursor:pointer;font-family:inherit;font-weight:700">
           <option value="1">1회↑</option>
           <option value="2" selected>2회↑</option>
           <option value="3">3회↑</option>
@@ -1507,7 +1524,19 @@
     <span id="word-count-label" style="font-size:0.8rem;color:#888;margin-left:4px"></span>
   </div>
 
-  <!-- 툴바 2행: 필터/정렬/페이지 -->
+  <!-- 툴바 2행: 검색 -->
+  <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+    <div style="position:relative;flex:1;max-width:360px">
+      <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:0.85rem;color:#aaa;pointer-events:none">🔍</span>
+      <input type="text" id="edit-search-input" placeholder="단어·후리가나·뜻 검색…" oninput="onSearchChange(this.value)"
+        style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:6px 30px 6px 30px;font-size:0.82rem;font-family:inherit;background:white;color:var(--ink);outline:none;transition:border-color 0.15s"
+        onfocus="this.style.borderColor='var(--mint)'" onblur="this.style.borderColor='var(--border)'">
+      <button id="edit-search-clear" onclick="clearSearch()" title="검색 초기화"
+        style="display:none;position:absolute;right:7px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:0.85rem;color:#bbb;padding:2px 4px;line-height:1">✕</button>
+    </div>
+  </div>
+
+  <!-- 툴바 3행: 필터/정렬/페이지 -->
   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
     <!-- 품사 필터 -->
     <select id="type-filter-select" onchange="onTypeFilterChange(this.value)"
@@ -1658,6 +1687,7 @@ let editPageSize = 20;
 let editCurrentPage = 1;
 let editSortMode = 'oldest';   // oldest | newest | kanji | furigana | carry
 let editTypeFilter = '';       // '' = 전체, 그 외 품사명
+let editSearchQuery = '';      // 검색어
 
 function loadPageSize() {
   const saved = localStorage.getItem(PAGE_SIZE_KEY);
@@ -1697,11 +1727,39 @@ function onTypeFilterChange(val) {
   renderEditTable();
 }
 
+function onSearchChange(val) {
+  editSearchQuery = val.trim();
+  editCurrentPage = 1;
+  const clearBtn = document.getElementById('edit-search-clear');
+  if (clearBtn) clearBtn.style.display = editSearchQuery ? 'block' : 'none';
+  renderEditTable();
+}
+
+function clearSearch() {
+  editSearchQuery = '';
+  const inp = document.getElementById('edit-search-input');
+  if (inp) inp.value = '';
+  const clearBtn = document.getElementById('edit-search-clear');
+  if (clearBtn) clearBtn.style.display = 'none';
+  editCurrentPage = 1;
+  renderEditTable();
+}
+
 // 현재 정렬+필터 적용된 단어 목록 반환
 function getFilteredSortedWords() {
   let list = editTypeFilter
     ? words.filter(w => (w.type || '') === editTypeFilter)
     : [...words];
+
+  // 검색어 필터
+  if (editSearchQuery) {
+    const q = editSearchQuery.toLowerCase();
+    list = list.filter(w =>
+      (w.kanji || '').toLowerCase().includes(q) ||
+      (w.furigana || '').toLowerCase().includes(q) ||
+      (w.meaning || '').toLowerCase().includes(q)
+    );
+  }
 
   switch (editSortMode) {
     case 'newest':
@@ -1895,7 +1953,7 @@ function switchTab(tab, btn) {
 function buildQueue() {
   roundDone = false;
   if (carryThresholdMode) {
-    const pool = words.filter(w => (carryCount[w.id] || 0) >= carryThreshold);
+    const pool = words.filter(w => carrySet.has(w.id) || (carryCount[w.id] || 0) >= carryThreshold);
     if (shuffleMode) shuffle(pool);
     quizQueue = pool;
   } else if (carryOnlyMode) {
@@ -1925,7 +1983,7 @@ function updateStats() {
   document.getElementById('stat-done').textContent = `완료: ${doneSet.size}`;
   let progressTotal, progressDone;
   if (carryThresholdMode) {
-    const pool = words.filter(w => (carryCount[w.id] || 0) >= carryThreshold);
+    const pool = words.filter(w => carrySet.has(w.id) || (carryCount[w.id] || 0) >= carryThreshold);
     progressTotal = pool.length;
     progressDone = currentIdx;
   } else if (carryOnlyMode) {
@@ -1942,19 +2000,18 @@ function updateStats() {
   // 전체 반복 버튼
   const btnAll = document.getElementById('btn-repeat-all');
   if (btnAll) {
-    btnAll.textContent = `🔁 전체반복 (${words.length})`;
+    btnAll.textContent = '🔁 전체반복';
     btnAll.disabled = words.length === 0;
     btnAll.style.opacity = words.length === 0 ? '0.4' : '';
   }
 
-  // N회 이상 이월 버튼
+  // N회 이상 이월 버튼 — 항상 활성화, 단어 없으면 클릭 시 안내
   const btnThresh = document.getElementById('btn-carry-threshold');
   if (btnThresh) {
-    const threshCount = words.filter(w => (carryCount[w.id] || 0) >= carryThreshold).length;
-    btnThresh.textContent = `↩ 이월복습 (${threshCount})`;
+    btnThresh.textContent = '↩ 이월복습';
     btnThresh.classList.toggle('active-mode', carryThresholdMode);
-    btnThresh.disabled = threshCount === 0;
-    btnThresh.style.opacity = threshCount === 0 ? '0.4' : '';
+    btnThresh.disabled = false;
+    btnThresh.style.opacity = '';
   }
 }
 
@@ -2071,31 +2128,68 @@ function buildWordRubyHtml(kanji, furigana, show) {
   if (!kanji) return '';
   const showCls = show ? ' class="show"' : '';
   if (!furigana || !_hasKanji(kanji)) {
-    // 한자 없으면 그냥 텍스트
     return kanji;
   }
 
-  // 한자+히라가나 혼합 분해: 한자 부분에만 후리가나, 히라가나는 그대로
-  // 예) 食べる / たべる → <ruby>食<rt>た</rt></ruby>べる
-  const kanjiOnly = kanji.replace(/[^一-鿿㐀-䶿々〆]/g, '');
-  // 단순 케이스: 단어 전체가 한자만이면 furigana 전체를 rt에
-  if (!/[぀-ゟ゠-ヿぁ-ん]/.test(kanji)) {
-    return `<ruby>${kanji}<rt${showCls}>${furigana}</rt></ruby>`;
+  // 단어를 [한자 덩어리, 히라가나 덩어리] 세그먼트로 분리
+  // 예) 待ち合せる → ['待', 'ち', '合', 'せる']
+  const KANJI_RE = /[\u4e00-\u9fff\u3400-\u4dbf々〆]+/;
+  const segments = [];
+  let remaining = kanji;
+  while (remaining.length > 0) {
+    const km = remaining.match(/^[\u4e00-\u9fff\u3400-\u4dbf々〆]+/);
+    if (km) { segments.push({ type: 'kanji', text: km[0] }); remaining = remaining.slice(km[0].length); continue; }
+    const hm = remaining.match(/^[^\u4e00-\u9fff\u3400-\u4dbf々〆]+/);
+    if (hm) { segments.push({ type: 'kana', text: hm[0] }); remaining = remaining.slice(hm[0].length); continue; }
+    break;
   }
 
-  // 한자+히라가나 혼합: suffix 분리
-  const suffixMatch = kanji.match(/^([一-鿿㐀-䶿々〆]+)([぀-ゟ゠-ヿぁ-ん]+)$/);
-  if (suffixMatch) {
-    const kanjiPart  = suffixMatch[1];
-    const suffixPart = suffixMatch[2];
-    if (furigana.endsWith(suffixPart)) {
-      const kanjiReading = furigana.slice(0, furigana.length - suffixPart.length);
-      return `<ruby>${kanjiPart}<rt${showCls}>${kanjiReading}</rt></ruby>${suffixPart}`;
+  // 세그먼트가 1개이면 (한자만, 또는 히라가나만)
+  if (segments.length === 1) {
+    if (segments[0].type === 'kanji') {
+      return `<ruby>${kanji}<rt${showCls}>${furigana}</rt></ruby>`;
+    }
+    return kanji;
+  }
+
+  // 히라가나 세그먼트를 앵커로 삼아 후리가나를 분배
+  // 전략: kana 세그먼트는 furigana 문자열 안에도 그대로 나타나므로 split 포인트로 활용
+  let furi = furigana;
+  const kanjiSegs = segments.filter(s => s.type === 'kanji');
+  const kanaSegs  = segments.filter(s => s.type === 'kana');
+
+  // kana 세그먼트 텍스트로 furigana를 분할
+  // 예) まちあわせる → ['まち', 'あわ', 'せる'] (구분자: ち, せる)
+  // segments 순서대로 처리
+  let furiIdx = 0;
+  let html = '';
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    if (seg.type === 'kana') {
+      // furigana에서도 이 kana가 나타나야 함 — 위치 탐색
+      const pos = furi.indexOf(seg.text, furiIdx);
+      if (pos !== -1) {
+        furiIdx = pos + seg.text.length;
+      }
+      html += seg.text;
+    } else {
+      // 다음 kana 세그먼트를 찾아 그것이 furigana에서 나타나는 위치까지가 이 한자의 읽기
+      let nextKanaInFuri = furi.length; // 기본: 끝까지
+      // 다음 kana 세그먼트 탐색
+      for (let j = i + 1; j < segments.length; j++) {
+        if (segments[j].type === 'kana') {
+          const pos = furi.indexOf(segments[j].text, furiIdx);
+          if (pos !== -1) { nextKanaInFuri = pos; }
+          break;
+        }
+      }
+      const kanjiReading = furi.slice(furiIdx, nextKanaInFuri);
+      furiIdx = nextKanaInFuri;
+      html += `<ruby>${seg.text}<rt${showCls}>${kanjiReading}</rt></ruby>`;
     }
   }
 
-  // 그 외: 전체에 furigana
-  return `<ruby>${kanji}<rt${showCls}>${furigana}</rt></ruby>`;
+  return html;
 }
 
 // ── 후리가나: furigana 필드만 사용 (kuromoji 제거) ──
@@ -2151,8 +2245,31 @@ function markDone() {
   carrySet.delete(w.id);
   save();
   currentIdx++;
-  showToast('완료! 잘 하셨어요 👏');
+  const totalDone = doneSet.size;
+  const ms = optsSettings.milestone || 0;
+  if (ms > 0 && totalDone > 0 && totalDone % ms === 0) {
+    showMilestone(totalDone);
+  } else {
+    showToast('완료! 잘 하셨어요 👏');
+  }
   renderQuiz();
+}
+
+function showMilestone(count) {
+  let el = document.getElementById('milestone-popup');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'milestone-popup';
+    el.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9000;pointer-events:none';
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `<div style="background:white;border:2px solid var(--mint);border-radius:16px;padding:32px 40px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,0.18);pointer-events:auto;animation:milestone-in 0.35s cubic-bezier(.34,1.56,.64,1)">
+    <div style="font-size:2.4rem;margin-bottom:8px">🎉</div>
+    <div style="font-family:'Noto Serif JP',serif;font-size:1.4rem;font-weight:700;color:var(--mint-deep);margin-bottom:4px">${count}개 완료!</div>
+    <div style="font-size:0.82rem;color:#aaa;margin-top:4px">정말 잘 하고 있어요</div>
+  </div>`;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.innerHTML = ''; }, 2200);
 }
 
 function resetAll() {
@@ -2233,9 +2350,10 @@ function repeatRemaining() {
   showToast(`전체 ${words.length}개 단어 다시 반복!${shuffleMode ? ' (셔플)' : ' (순서대로)'}`);
 }
 
+
 function toggleCarryThresholdMode() {
-  const threshCount = words.filter(w => (carryCount[w.id] || 0) >= carryThreshold).length;
-  if (threshCount === 0) { showToast(`${carryThreshold}회 이상 이월된 단어가 없습니다`); return; }
+  const threshCount = words.filter(w => carrySet.has(w.id) || (carryCount[w.id] || 0) >= carryThreshold).length;
+  if (threshCount === 0) { showToast(`이월된 단어가 없습니다`); return; }
   carryThresholdMode = !carryThresholdMode;
   if (carryThresholdMode) { carryOnlyMode = false; repeatAllMode = false; }
   roundDone = false;
@@ -2247,7 +2365,6 @@ function toggleCarryThresholdMode() {
 
 function setCarryThreshold(val) {
   carryThreshold = parseInt(val) || 2;
-  // sync select element
   const sel = document.getElementById('threshold-select');
   if (sel) sel.value = String(carryThreshold);
   updateStats();
@@ -2271,16 +2388,19 @@ function renderEditTable() {
 
   const displayWords = getFilteredSortedWords();
   const totalFiltered = displayWords.length;
-  // 라벨: 필터 중이면 "X / Y개", 아니면 "총 Y개"
-  const countLabel = editTypeFilter
+  // 라벨: 검색/필터 중이면 "X / Y개", 아니면 "총 Y개"
+  const isFiltering = editTypeFilter || editSearchQuery;
+  const countLabel = isFiltering
     ? `${totalFiltered} / 총 ${words.length}개`
     : `총 ${words.length}개`;
   document.getElementById('word-count-label').textContent = countLabel;
 
   if (displayWords.length === 0) {
-    const msg = editTypeFilter
-      ? `'${editTypeFilter}' 품사의 단어가 없습니다.`
-      : '단어가 없습니다. 위 버튼으로 추가해 보세요!';
+    const msg = editSearchQuery
+      ? `'${editSearchQuery}' 검색 결과가 없습니다.`
+      : editTypeFilter
+        ? `'${editTypeFilter}' 품사의 단어가 없습니다.`
+        : '단어가 없습니다. 위 버튼으로 추가해 보세요!';
     tbody.innerHTML = `<tr><td colspan="7" class="no-words">${msg}</td></tr>`;
     renderPaginationBar(0, 'pagination-bar-top');
     renderPaginationBar(0, 'pagination-bar-bottom');
@@ -2557,7 +2677,7 @@ function speakWord(btn, text) {
   utter.lang = 'ja-JP';
   utter.rate = (optsSettings.ttsRate ?? 85) / 100;
   utter.pitch = 1;
-  utter.volume = (optsSettings.ttsVolume ?? 100) / 100;
+  utter.volume = (optsSettings.ttsVolume ?? 50) / 100;
 
   const jaVoice = _wsVoices.find(v => v.lang === 'ja-JP') || _wsVoices.find(v => v.lang.startsWith('ja'));
   if (jaVoice) utter.voice = jaVoice;
@@ -2589,7 +2709,7 @@ function speakWordThenExample() {
   const utter1 = new SpeechSynthesisUtterance(_ttsText);
   utter1.lang = 'ja-JP';
   utter1.rate = (optsSettings.ttsRate ?? 85) / 100;
-  utter1.volume = (optsSettings.ttsVolume ?? 100) / 100;
+  utter1.volume = (optsSettings.ttsVolume ?? 50) / 100;
   if (jaVoice) utter1.voice = jaVoice;
   utter1.onend = () => {
     if (!_ttsExampleText) { _ttsReset(); return; }
@@ -2598,7 +2718,7 @@ function speakWordThenExample() {
       const utter2 = new SpeechSynthesisUtterance(_ttsExampleText);
       utter2.lang = 'ja-JP';
       utter2.rate = (optsSettings.ttsRate ?? 85) / 100;
-      utter2.volume = (optsSettings.ttsVolume ?? 100) / 100;
+      utter2.volume = (optsSettings.ttsVolume ?? 50) / 100;
       if (jaVoice) utter2.voice = jaVoice;
       utter2.onend = () => _ttsReset();
       utter2.onerror = () => _ttsReset();
@@ -3036,6 +3156,7 @@ let optsSettings = {
   ttsVolume:     100,     // 0~100 (실제값 /100)
   showExample:   true,    // 퀴즈에서 예문 표시
   wordFont:      'serif', // 단어 카드 폰트: 'serif' | 'sans'
+  milestone:     50,      // 완료 마일스톤 (0=비활성화)
 };
 
 function loadOptsSettings() {
@@ -3051,6 +3172,7 @@ function saveOptsSettings() {
   optsSettings.ttsRate       = parseInt(document.getElementById('opt-tts-rate').value);
   optsSettings.ttsVolume     = parseInt(document.getElementById('opt-tts-volume').value);
   optsSettings.showExample   = document.getElementById('opt-show-example')?.checked ?? true;
+  optsSettings.milestone     = parseInt(document.getElementById('opt-milestone')?.value) || 0;
   localStorage.setItem(OPTS_KEY, JSON.stringify(optsSettings));
   applyWordFont();
   // 버튼 표시 여부 즉시 반영
@@ -3063,11 +3185,13 @@ function syncOptsUI() {
   document.getElementById('opt-tts-rate').value         = optsSettings.ttsRate;
   updateRateDisplay(optsSettings.ttsRate);
   const volEl = document.getElementById('opt-tts-volume');
-  if (volEl) { volEl.value = optsSettings.ttsVolume ?? 100; updateVolumeDisplay(optsSettings.ttsVolume ?? 100); }
+  if (volEl) { volEl.value = optsSettings.ttsVolume ?? 50; updateVolumeDisplay(optsSettings.ttsVolume ?? 50); }
   const cb = document.getElementById('opt-shuffle');
   if (cb) cb.checked = shuffleMode;
   const se = document.getElementById('opt-show-example');
   if (se) se.checked = optsSettings.showExample ?? true;
+  const ms = document.getElementById('opt-milestone');
+  if (ms) ms.value = optsSettings.milestone ?? 50;
   syncWordFontButtons();
 }
 
@@ -3113,8 +3237,8 @@ function updateVolumeDisplay(val) {
   document.getElementById('volume-display').textContent = val + '%';
 }
 function resetVolume() {
-  document.getElementById('opt-tts-volume').value = 100;
-  updateVolumeDisplay(100);
+  document.getElementById('opt-tts-volume').value = 50;
+  updateVolumeDisplay(50);
   saveOptsSettings();
 }
 
