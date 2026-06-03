@@ -1688,19 +1688,21 @@ function saveCustomTypes() {
 
 // words에 있는 품사 + 별도 저장된 customTypes를 합쳐 가나다 순 반환
 function getAllTypes() {
-  const fromWords = words.map(w => w.type).filter(Boolean);
+  const fromWords = new Set(words.map(w => w.type).filter(Boolean));
+  // customTypes 중 현재 words에 사용 중인 것만 유지 (자동 정리)
+  const before = customTypes.length;
+  customTypes = customTypes.filter(t => fromWords.has(t));
+  if (customTypes.length !== before) saveCustomTypes();
   const merged = [...new Set([...fromWords, ...customTypes])];
   return merged.sort((a, b) => a.localeCompare(b, 'ko'));
 }
 
-// 새 품사 추가 (엑셀 가져오기 또는 직접 입력 시 호출)
+// 새 품사 추가 (직접 입력 시 호출 — words에 아직 반영되기 전에 잠깐 유지하기 위해 customTypes에 등록)
 function registerCustomType(type) {
   if (!type) return false;
   const trimmed = type.trim();
   if (!trimmed) return false;
   if (customTypes.includes(trimmed)) return false;
-  // words에 이미 있으면 customTypes에 추가 안 해도 getAllTypes에서 나옴
-  // 그래도 customTypes에 추가해 두면 words가 비어도 유지됨
   customTypes.push(trimmed);
   saveCustomTypes();
   refreshTypeDropdowns();
@@ -2697,6 +2699,7 @@ async function deleteRow(id) {
   words = words.filter(w => w.id !== id);
   carrySet.delete(id); doneSet.delete(id);
   save();
+  refreshTypeDropdowns();
   renderEditTable();
   showToast('삭제되었습니다');
   showSyncStatus('saving');
@@ -3224,6 +3227,7 @@ async function deleteSelected() {
   selectedIds.forEach(id => { carrySet.delete(id); doneSet.delete(id); });
   selectedIds.clear();
   save();
+  refreshTypeDropdowns();
   renderEditTable();
   showToast('선택 단어 삭제 완료');
   showSyncStatus('saving');
