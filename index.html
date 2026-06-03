@@ -430,8 +430,8 @@
     font-size: 0.9rem;
     vertical-align: middle;
   }
-  td.kanji-cell { font-family: 'Noto Serif JP', serif; font-size: 1.1rem; font-weight: 700; }
-  td.furigana-cell { color: var(--mint); font-family: 'Noto Serif JP', serif; font-weight: 700; }
+  td.kanji-cell { font-family: var(--word-font); font-size: 1.1rem; font-weight: 700; }
+  td.furigana-cell { color: var(--mint); font-family: var(--word-font); font-weight: 700; }
   td.type-cell { color: #777; font-size: 0.78rem; }
   td.actions-cell { white-space: nowrap; }
 
@@ -452,12 +452,12 @@
   .word-card-check { flex-shrink: 0; }
   .word-card-body { width: 100%; min-width: 0; }
   .word-card-kanji {
-    font-family: 'Noto Serif JP', serif;
+    font-family: var(--word-font);
     font-size: 1.15rem;
     font-weight: 700;
     line-height: 1.3;
   }
-  .word-card-furi { font-family: 'Noto Serif JP', serif; color: var(--mint); font-size: 0.85rem; font-weight: 700; }
+  .word-card-furi { font-family: var(--word-font); color: var(--mint); font-size: 0.85rem; font-weight: 700; }
   .word-card-meaning { font-size: 0.85rem; color: #444; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .word-card-meta { display: flex; gap: 6px; margin-top: 4px; align-items: center; flex-wrap: wrap; }
   .word-card-type { font-size: 0.7rem; color: #888; background: var(--paper2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; }
@@ -1553,16 +1553,6 @@
     <select id="type-filter-select" onchange="onTypeFilterChange(this.value)"
       style="border:1.5px solid var(--border);border-radius:4px;padding:5px 8px;font-size:0.78rem;background:white;color:var(--ink);cursor:pointer;font-family:inherit;width:auto">
       <option value="">전체 품사</option>
-      <option value="명사">명사</option>
-      <option value="동사">동사</option>
-      <option value="자동사">자동사</option>
-      <option value="타동사">타동사</option>
-      <option value="형용사">형용사</option>
-      <option value="나형용사">나형용사</option>
-      <option value="부사">부사</option>
-      <option value="조사">조사</option>
-      <option value="접속사">접속사</option>
-      <option value="기타">기타</option>
     </select>
     <!-- 정렬 -->
     <select id="sort-select" onchange="onSortChange(this.value)"
@@ -1660,16 +1650,7 @@ async function sbFetch(path, options = {}) {
 }
 
 // ── Default Data (Supabase가 비어있을 때만 사용) ──
-const DEFAULT_WORDS = [
-  { kanji:'食べる', furigana:'たべる', meaning:'먹다', type:'동사' },
-  { kanji:'飲む', furigana:'のむ', meaning:'마시다', type:'동사' },
-  { kanji:'学校', furigana:'がっこう', meaning:'학교', type:'명사' },
-  { kanji:'先生', furigana:'せんせい', meaning:'선생님', type:'명사' },
-  { kanji:'美しい', furigana:'うつくしい', meaning:'아름답다', type:'형용사' },
-  { kanji:'分かる', furigana:'わかる', meaning:'이해하다, 알다', type:'동사' },
-  { kanji:'友達', furigana:'ともだち', meaning:'친구', type:'명사' },
-  { kanji:'電車', furigana:'でんしゃ', meaning:'전철', type:'명사' },
-];
+const DEFAULT_WORDS = [];
 
 // ── State ──
 let words = [];
@@ -1689,6 +1670,54 @@ let nextId = 100;
 
 let checkboxMode = false;
 let selectedIds = new Set();
+
+// ── 품사 목록 (words에 실제 사용 중인 품사 + 앱에서 직접 추가된 품사) ──
+const CUSTOM_TYPES_KEY = 'jp_vocab_custom_types_v1';
+let customTypes = []; // 앱에서 직접 추가된 품사 (localStorage 저장)
+
+function loadCustomTypes() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_TYPES_KEY);
+    if (raw) customTypes = JSON.parse(raw);
+  } catch(e) { customTypes = []; }
+}
+
+function saveCustomTypes() {
+  localStorage.setItem(CUSTOM_TYPES_KEY, JSON.stringify(customTypes));
+}
+
+// words에 있는 품사 + 별도 저장된 customTypes를 합쳐 가나다 순 반환
+function getAllTypes() {
+  const fromWords = words.map(w => w.type).filter(Boolean);
+  const merged = [...new Set([...fromWords, ...customTypes])];
+  return merged.sort((a, b) => a.localeCompare(b, 'ko'));
+}
+
+// 새 품사 추가 (엑셀 가져오기 또는 직접 입력 시 호출)
+function registerCustomType(type) {
+  if (!type) return false;
+  const trimmed = type.trim();
+  if (!trimmed) return false;
+  if (customTypes.includes(trimmed)) return false;
+  // words에 이미 있으면 customTypes에 추가 안 해도 getAllTypes에서 나옴
+  // 그래도 customTypes에 추가해 두면 words가 비어도 유지됨
+  customTypes.push(trimmed);
+  saveCustomTypes();
+  refreshTypeDropdowns();
+  return true;
+}
+
+// 품사 필터 드롭다운 & editRow select 갱신
+function refreshTypeDropdowns() {
+  const allTypes = getAllTypes();
+  // 1. 필터 드롭다운 (words 기반이므로 words 로드 후에 의미 있음)
+  const filterSel = document.getElementById('type-filter-select');
+  if (filterSel) {
+    const currentVal = filterSel.value;
+    filterSel.innerHTML = '<option value="">전체 품사</option>' +
+      allTypes.map(t => `<option value="${t}"${t === currentVal ? ' selected' : ''}>${t}</option>`).join('');
+  }
+}
 
 // ── 페이지네이션 ──
 const PAGE_SIZE_KEY = 'jp_vocab_pagesize_v1';
@@ -1868,22 +1897,12 @@ function save() {
   saveProgress();
 }
 
-// ── loadLocal() : localStorage / 기본값으로 즉시 로드 ──
+// ── loadLocal() : 단어는 항상 Supabase에서만 로드, localStorage 단어 캐시는 무시 ──
 function loadLocal() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw) {
-    try {
-      const d = JSON.parse(raw);
-      if (d.words && d.words.length > 0) {
-        words = d.words;
-        nextId = words.reduce((m,w) => Math.max(m, w.id), 0) + 1;
-        loadProgress();
-        return;
-      }
-    } catch(e) {}
-  }
-  words = JSON.parse(JSON.stringify(DEFAULT_WORDS));
-  nextId = words.reduce((m,w) => Math.max(m, w.id), 0) + 1;
+  // 혹시 남아있는 구버전 단어 캐시 삭제
+  localStorage.removeItem(STORAGE_KEY);
+  words = [];
+  nextId = 1;
   loadProgress();
 }
 
@@ -1892,12 +1911,14 @@ async function syncFromSupabase() {
   try {
     let rows = await sbFetch('vocab_words?order=id.asc');
     if (!rows || rows.length === 0) {
-      rows = await sbFetch('vocab_words', {
-        method: 'POST',
-        prefer: 'return=representation',
-        body: JSON.stringify(DEFAULT_WORDS)
-      });
-      showToast('기본 단어 8개를 Supabase에 저장했습니다');
+      words = [];
+      nextId = 1;
+      loadProgress();
+      showSyncStatus('ok');
+      refreshTypeDropdowns();
+      renderQuiz();
+      renderEditTable();
+      return;
     }
     words = rows.map(r => ({
       id:        r.id,
@@ -1912,6 +1933,7 @@ async function syncFromSupabase() {
     loadProgress();
     showSyncStatus('ok');
     // 동기화된 데이터로 화면 갱신
+    refreshTypeDropdowns();  // words 로드 후 품사 드롭다운 갱신
     // 이미 퀴즈가 진행 중이면 큐를 재빌드하지 않음 (첫 단어가 바뀌는 현상 방지)
     if (quizQueue.length === 0) buildQueue();
     renderQuiz();
@@ -2106,15 +2128,15 @@ function renderQuiz() {
   const isCarried = carrySet.has(w.id);
   const wCarryCount = carryCount[w.id] || 0;
   const typeBadge = '';
-  const carryIndicator = isCarried
-    ? `<div style="color:var(--red);font-size:0.78rem;margin-bottom:8px;font-weight:600">↩ 이월 단어${wCarryCount > 0 ? ` (누적 ${wCarryCount}회)` : ''}</div>`
-    : (wCarryCount > 0 ? `<div style="color:var(--mint);font-size:0.75rem;margin-bottom:6px">이월 이력: ${wCarryCount}회</div>` : '');
+  const carryBadge = isCarried
+    ? `<span class="type-badge" style="background:var(--red)">↩ 이월${wCarryCount > 0 ? ` ${wCarryCount}회` : ''}</span>`
+    : (wCarryCount > 0 ? `<span class="type-badge" style="background:var(--mint)">이월 이력 ${wCarryCount}회</span>` : '');
 
   area.innerHTML = bannerHtml + `
     <div class="card-wrapper">
       <div class="card" id="quiz-card" onclick="onCardClick()" style="cursor:pointer">
         ${typeBadge}
-        ${carryIndicator}
+        ${carryBadge}
         <div class="kanji" id="quiz-kanji-el">${buildWordRubyHtml(w.kanji, w.furigana, false)}</div>
         <div class="meaning" id="mean">${w.type ? `<span class="meaning-type-badge">${esc(w.type)}</span>` : ''}<span>${esc(w.meaning)}</span></div>
         ${(optsSettings.showExample && w.exampleJp) ? `
@@ -2503,6 +2525,51 @@ function renderEditTable() {
   }).join('');
 }
 
+// 품사 셀 HTML 생성 (select + "직접 입력" 전환)
+function buildTypeSelectHTML(id, currentType) {
+  const allTypes = getAllTypes();
+  // 현재 품사가 목록에 없으면 직접 입력 모드로 시작
+  const isCustom = currentType && !allTypes.includes(currentType);
+  if (isCustom) {
+    return `<div style="display:flex;gap:4px;align-items:center">
+      <input id="e-type-${id}" value="${esc(currentType)}" placeholder="품사 직접 입력"
+        style="flex:1" />
+      <button type="button" onclick="switchToTypeSelect(${id})"
+        style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--paper2);cursor:pointer;font-size:0.75rem;white-space:nowrap;flex-shrink:0">목록</button>
+    </div>`;
+  }
+  return `<select id="e-type-${id}" data-prev="${esc(currentType)}" onchange="onTypeSelectChange(this, ${id})">
+    ${allTypes.map(t => `<option${currentType===t?' selected':''}>${esc(t)}</option>`).join('')}
+    <option value="__custom__">✏️ 직접 입력…</option>
+  </select>`;
+}
+
+function onTypeSelectChange(sel, id) {
+  if (sel.value !== '__custom__') return;
+  const cell = sel.closest('td');
+  if (!cell) return;
+  // select의 data-prev에 저장된 원래 품사를 가져옴
+  const prevType = sel.dataset.prev || '';
+  cell.innerHTML = `<div style="display:flex;gap:4px;align-items:center">
+    <input id="e-type-${id}" placeholder="새 품사 입력" style="flex:1" autofocus data-prev="${esc(prevType)}" />
+    <button type="button" onclick="switchToTypeSelect(${id})"
+      style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--paper2);cursor:pointer;font-size:0.75rem;white-space:nowrap;flex-shrink:0">목록</button>
+  </div>`;
+  document.getElementById('e-type-' + id)?.focus();
+}
+
+function switchToTypeSelect(id) {
+  const input = document.getElementById('e-type-' + id);
+  const cell = input?.closest('td');
+  if (!cell) return;
+  // 입력된 값이 있으면 customTypes에 등록 후 select 재생성
+  const val = (input?.value || '').trim();
+  if (val) registerCustomType(val);
+  // 입력값이 없으면 이전에 선택했던 품사로 복원
+  const fallback = input?.dataset?.prev || getAllTypes()[0];
+  cell.innerHTML = buildTypeSelectHTML(id, val || fallback);
+}
+
 function editRow(id) {
   const w = words.find(x => x.id === id);
   if (!w) return;
@@ -2513,13 +2580,7 @@ function editRow(id) {
     <td><input id="e-kanji-${id}" value="${esc(w.kanji)}" placeholder="한자/단어" /></td>
     <td><input id="e-furi-${id}" value="${esc(w.furigana)}" placeholder="후리가나" /></td>
     <td><input id="e-mean-${id}" value="${esc(w.meaning)}" placeholder="뜻" /></td>
-    <td>
-      <select id="e-type-${id}">
-        ${['명사','동사','자동사','타동사','형용사','나형용사','부사','조사','접속사','기타'].map(t =>
-          `<option${w.type===t?' selected':''}>${t}</option>`
-        ).join('')}
-      </select>
-    </td>
+    <td>${buildTypeSelectHTML(id, w.type)}</td>
     <td></td>
     <td class="actions-cell">
       <button class="icon-btn save-btn" onclick="saveRow(${id})">💾</button>
@@ -2550,10 +2611,16 @@ async function saveRow(id) {
   const kanji     = document.getElementById('e-kanji-' + id).value.trim();
   const furigana  = document.getElementById('e-furi-' + id).value.trim();
   const meaning   = document.getElementById('e-mean-' + id).value.trim();
-  const type      = document.getElementById('e-type-' + id).value;
+  const typeRaw   = (document.getElementById('e-type-' + id)?.value || '').trim();
+  const type      = (typeRaw === '__custom__' || !typeRaw) ? (getAllTypes()[0] || '명사') : typeRaw;
   const exampleJp = (document.getElementById('e-exjp-' + id)?.value || '').trim();
   const exampleKr = (document.getElementById('e-exkr-' + id)?.value || '').trim();
   if (!kanji) { showToast('단어를 입력해 주세요'); return; }
+  // 직접 입력한 신규 품사 등록
+  if (type && !getAllTypes().includes(type)) {
+    registerCustomType(type);
+    refreshTypeDropdowns();
+  }
 
   // 신규 단어일 때만 중복 체크
   if (w._new) {
@@ -2965,6 +3032,11 @@ function importExcel(event) {
         example_kr: String(r['예문(한국어)'] || '').trim(),
       }));
 
+      // 새 품사 감지 → 드롭다운에 자동 추가
+      let newTypesAdded = 0;
+      const seenTypes = new Set(newWords.map(w => w.type).filter(Boolean));
+      seenTypes.forEach(t => { if (registerCustomType(t)) newTypesAdded++; });
+
       // 커스텀 모달로 선택 받기
       const choice = await showImportConfirm(rows.length);
       if (choice === 'cancel') { showToast('가져오기가 취소됐습니다'); return; }
@@ -3028,10 +3100,11 @@ function importExcel(event) {
       if (exampleUpdated > 0) parts.push(`예문 ${exampleUpdated}개 업데이트`);
       if (skipped > 0) parts.push(`중복 ${skipped}개 제외`);
       if (replace) {
-        showToast(`${inserted.length}개 단어를 교체했습니다`);
+        showToast(`${inserted.length}개 단어를 교체했습니다${newTypesAdded > 0 ? ` · 새 품사 ${newTypesAdded}개 추가` : ''}`);
       } else if (parts.length === 0) {
         showToast('추가할 항목이 없습니다');
       } else {
+        if (newTypesAdded > 0) parts.push(`새 품사 ${newTypesAdded}개 추가`);
         showToast(parts.join(' · '));
       }
     } catch(err) {
@@ -3060,7 +3133,8 @@ function importConfirmChoice(choice) {
 function addRow() {
   // 임시 음수 ID로 신규 행 생성 (saveRow에서 실제 DB id로 교체됨)
   const id = -(nextId++);
-  words.push({ id, kanji: '', furigana: '', meaning: '', type: '명사', _new: true });
+  const defaultType = getAllTypes()[0] || '';
+  words.push({ id, kanji: '', furigana: '', meaning: '', type: defaultType, _new: true });
   save();
   // 필터/정렬을 기본값으로 리셋해야 새 단어가 보임 (oldest + 전체)
   if (editTypeFilter || editSortMode !== 'oldest') {
@@ -3547,12 +3621,14 @@ document.addEventListener('click', function(e) {
 // ── Async Init ──
 (async function init() {
   loadFontSize();
+  loadCustomTypes();         // 저장된 커스텀 품사 로드
   loadLocal();           // 즉시 로컬 데이터 로드
   loadOptsSettings();
   applyWordFont();
   loadKbBindings();
   loadShuffleMode();
   loadPageSize();
+  refreshTypeDropdowns();    // 품사 드롭다운 초기 렌더링 (loadSortAndFilter 전에 실행)
   loadSortAndFilter();
   buildQueue();
 
